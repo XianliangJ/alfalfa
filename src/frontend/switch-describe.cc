@@ -182,7 +182,7 @@ vector<double> best_switch_sizes( const vector<double> & switch_sizes, unsigned 
 void print_switch_stats( const StreamTracker & source, const StreamTracker & target, unsigned source_idx, unsigned target_idx )
 {
     auto switch_sizes = source.switch_sizes( target );
-    cout << "Stream " << source_idx << " -> Stream " << target_idx + 1 << ":\n";
+    cout << "Stream " << source_idx << " -> Stream " << target_idx << ":\n";
     cout << "Switch median size: " << median( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch mean size: " << mean( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch median overhead: " << median( get<1>( switch_sizes ) ) << " bytes\n";
