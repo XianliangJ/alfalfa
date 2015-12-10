@@ -51,6 +51,7 @@ private:
   unsigned total_displayed_frames_;
   unsigned frames_per_second_;
   double stream_size_;
+  size_t track_id_;
 
   bool is_key_frame( const FrameInfo & frame )
   {
@@ -162,7 +163,7 @@ public:
     return switch_stats;
   }
 
-  unsigned track_id()
+  size_t track_id() const
   {
     return track_id_;
   }
@@ -185,10 +186,10 @@ vector<double> best_switch_sizes( const vector<double> & switch_sizes, unsigned 
   return best;
 }
 
-void print_switch_stats( const StreamTracker & source, const StreamTracker & target, unsigned source_idx, unsigned target_idx )
+void print_switch_stats( const StreamTracker & source, const StreamTracker & target )
 {
     auto switch_sizes = source.switch_sizes( target );
-    cout << "Track " << source_idx << " -> Track " << target_idx << ":\n";
+    cout << "Track " << source.track_id() << " -> Track " << target.track_id() << ":\n";
     cout << "Switch median size: " << median( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch mean size: " << mean( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch median overhead: " << median( get<1>( switch_sizes ) ) << " bytes\n";
@@ -239,8 +240,8 @@ int main( int argc, char * argv[] )
     const StreamTracker & source = streams[ stream_idx ];
     const StreamTracker & target = streams[ stream_idx + 1 ];
 
-    print_switch_stats( source, target, source.track_id(), target.track_id() );
+    print_switch_stats( source, target );
 
-    print_switch_stats( target, source, target.track_id(), source.track_id() );
+    print_switch_stats( target, source );
   }
 }
