@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <unistd.h>
+#include <tuple>
 
 using namespace std;
 
@@ -128,12 +129,13 @@ public:
     return stream_size_;
   }
 
-  vector<double> switch_sizes( const StreamTracker & target ) const
+  tuple<vector<double>,vector<double>,vector<unsigned>> switch_sizes( const StreamTracker & target ) const
   {
-    vector<double> switch_sizes;
+    tuple<vector<double>,vector<double>,vector<unsigned>> switch_stats;
     for ( unsigned cur_switch = 0; cur_switch < total_displayed_frames_; cur_switch++ ) {
       double switch_size = 0;
       double target_size = 0;
+      unsigned switch_length = 0;
       TrackDBIterator source_pos = displayed_frames_[ cur_switch ];
       TrackDBIterator target_pos = target.displayed_frames_[ cur_switch ];
 
@@ -141,6 +143,9 @@ public:
 
       for ( SwitchDBIterator s = switches.first; s != switches.second; s++ ) {
         switch_size += s->length();
+        if ( s->shown() ) {
+          switch_length += 1;
+        }
       }
 
       TrackDBIterator target_end = alf_.get_frames( switches.second ).first;
@@ -148,10 +153,12 @@ public:
         target_size += t->length();
       }
 
-      switch_sizes.push_back( switch_size - target_size );
+      get<0>( switch_stats ).push_back( switch_size );
+      get<1>( switch_stats ).push_back( switch_size - target_size );
+      get<2>( switch_stats ).push_back( switch_size / switch_length );
     }
 
-    return switch_sizes;
+    return switch_stats;
   }
 };
 
@@ -170,6 +177,22 @@ vector<double> best_switch_sizes( const vector<double> & switch_sizes, unsigned 
   }
 
   return best;
+}
+
+void print_switch_stats( const StreamTracker & source, const StreamTracker & target, unsigned source_idx, unsigned target_idx )
+{
+    auto switch_sizes = source.switch_sizes( target );
+    cout << "Stream " << source_idx << " -> Stream " << target_idx + 1 << ":\n";
+    cout << "Switch median size: " << median( get<0>( switch_sizes ) ) << " bytes\n";
+    cout << "Switch mean size: " << mean( get<0>( switch_sizes ) ) << " bytes\n";
+    cout << "Switch median overhead: " << median( get<1>( switch_sizes ) ) << " bytes\n";
+    cout << "Switch mean overhead: " << mean( get<1>( switch_sizes ) ) << " bytes\n";
+    cout << "Switch median size / switch_length: " << median( get<2>( switch_sizes ) ) << " bytes\n";
+    cout << "Switch mean size / switch_length: " << mean( get<2>( switch_sizes ) ) << " bytes\n";
+
+    auto best_sizes = best_switch_sizes( get<1>( switch_sizes ), 24 );
+    cout << "Best 1 sec switch median overhead: " << median( best_sizes ) << " bytes\n";
+    cout << "Best 1 sec switch mean overhead: " << mean( best_sizes ) << " bytes\n\n";
 }
 
 int main( int argc, char * argv[] )
@@ -209,22 +232,8 @@ int main( int argc, char * argv[] )
     const StreamTracker & source = streams[ stream_idx ];
     const StreamTracker & target = streams[ stream_idx + 1 ];
 
-    auto switch_sizes = source.switch_sizes( target );
-    auto best_sizes = best_switch_sizes( switch_sizes, 48 );
+    print_switch_stats( source, target, stream_idx, stream_idx + 1 );
 
-    cout << "Stream " << stream_idx << " -> Stream " << stream_idx + 1 << ":\n";
-    cout << "Switch median size: " << median( switch_sizes ) << " bytes\n";
-    cout << "Switch mean size: " << mean( switch_sizes ) << " bytes\n";
-    cout << "Best 2 sec switch median size: " << median( best_sizes ) << " bytes\n";
-    cout << "Best 2 sec switch mean size: " << mean( best_sizes ) << " bytes\n\n";
-
-    switch_sizes = target.switch_sizes( source );
-    best_sizes = best_switch_sizes( switch_sizes, 48 );
-
-    cout << "Stream " << stream_idx + 1 << " -> Stream " << stream_idx << ":\n";
-    cout << "Switch median size: " << median( switch_sizes ) << " bytes\n";
-    cout << "Switch mean size: " << mean( switch_sizes ) << " bytes\n";
-    cout << "Best 2 sec switch median size: " << median( best_sizes ) << " bytes\n";
-    cout << "Best 2 sec switch mean size: " << mean( best_sizes ) << " bytes\n\n";
+    print_switch_stats( target, source, stream_idx + 1, stream_idx );
   }
 }
