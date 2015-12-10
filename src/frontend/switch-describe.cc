@@ -67,7 +67,7 @@ private:
   }
 
 public:
-  StreamTracker( const TrackDBIterator & start, const TrackDBIterator & end, const PlayableAlfalfaVideo & alf )
+  StreamTracker( const TrackDBIterator & start, const TrackDBIterator & end, const PlayableAlfalfaVideo & alf, unsigned track_id )
     : alf_( alf ),
       key_frame_sizes_(),
       key_frame_nums_(),
@@ -76,7 +76,8 @@ public:
       displayed_frames_(),
       total_displayed_frames_( 0 ),
       frames_per_second_( 24 ),
-      stream_size_( 0 )
+      stream_size_( 0 ),
+      track_id_( track_id )
   {
     for ( TrackDBIterator cur = start; cur != end; cur++ ) {
       const FrameInfo & frame = *cur;
@@ -160,6 +161,11 @@ public:
 
     return switch_stats;
   }
+
+  unsigned track_id()
+  {
+    return track_id_;
+  }
 };
 
 vector<double> best_switch_sizes( const vector<double> & switch_sizes, unsigned interval )
@@ -182,7 +188,7 @@ vector<double> best_switch_sizes( const vector<double> & switch_sizes, unsigned 
 void print_switch_stats( const StreamTracker & source, const StreamTracker & target, unsigned source_idx, unsigned target_idx )
 {
     auto switch_sizes = source.switch_sizes( target );
-    cout << "Stream " << source_idx << " -> Stream " << target_idx << ":\n";
+    cout << "Track " << source_idx << " -> Track " << target_idx << ":\n";
     cout << "Switch median size: " << median( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch mean size: " << mean( get<0>( switch_sizes ) ) << " bytes\n";
     cout << "Switch median overhead: " << median( get<1>( switch_sizes ) ) << " bytes\n";
@@ -209,14 +215,15 @@ int main( int argc, char * argv[] )
   vector<StreamTracker> streams;
   for ( auto track = tracks.first; track != tracks.second; track++ ) {
     auto track_bounds = alf.get_frames( *track );
-    streams.emplace_back( track_bounds.first, track_bounds.second, alf );
+    streams.emplace_back( track_bounds.first, track_bounds.second, alf, *track );
   }
 
   cout << fixed;
   for ( unsigned stream_idx = 0; stream_idx < streams.size(); stream_idx++ ) {
-    cout << "Track " << stream_idx << ":\n";
 
     const StreamTracker & stream = streams[ stream_idx ];
+
+    cout << "Track " << stream.track_id() << ":\n";
 
     cout << "Length: " << stream.total_time() << " seconds\n";
     cout << "Total frames: " << stream.total_frames() << "\n";
@@ -232,8 +239,8 @@ int main( int argc, char * argv[] )
     const StreamTracker & source = streams[ stream_idx ];
     const StreamTracker & target = streams[ stream_idx + 1 ];
 
-    print_switch_stats( source, target, stream_idx, stream_idx + 1 );
+    print_switch_stats( source, target, source.track_id(), target.track_id() );
 
-    print_switch_stats( target, source, stream_idx + 1, stream_idx );
+    print_switch_stats( target, source, target.track_id(), source.track_id() );
   }
 }
