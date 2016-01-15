@@ -214,7 +214,7 @@ public:
 
       auto track = orig_alf_.get_track_range( track_id, begin_frame, orig_alf_.get_track_size( track_id ) );
 
-      while ( not track.first->is_keyframe() and track.first != track.second ) {
+      while ( track.first != track.second and not track.first->is_keyframe() ) {
         track.first++;
       }
 
