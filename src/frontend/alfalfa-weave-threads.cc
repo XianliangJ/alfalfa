@@ -60,17 +60,16 @@ private:
   // List of players we are generating continuations from
   vector<SwitchPlayer> switch_players_ {};
 
-  TrackDBIterator track_frame_;
-  TrackDBIterator track_end_;
+  TrackDBIterator track_frame_, track_end_;
   
   const PlayableAlfalfaVideo & source_alf_;
 
 public:
-  StreamState( const pair<TrackDBIterator, TrackDBIterator> & track_pair,
+  StreamState( const pair<TrackDBIterator, TrackDBIterator> & track,
                const PlayableAlfalfaVideo & source_alf )
     : stream_player_( source_alf.get_info().width, source_alf.get_info().height ),
-      track_frame_( track_pair.first ),
-      track_end_( track_pair.second ),
+      track_frame_( track.first ),
+      track_end_( track.second ),
       source_alf_( source_alf )
   {}
 
@@ -183,9 +182,14 @@ public:
     }
   }
 
+  bool on_keyframe( void ) const
+  {
+    return track_frame_->is_keyframe();
+  }
+
   bool eos( void ) const
   {
-    return track_frame_ == track_end_;
+    return track_frame_ == track_end_; 
   }
 };
 
@@ -198,6 +202,7 @@ private:
 
 public:
   ContinuationGenerator( const string & source_alf_path, const string & new_alf_path,
+                         unsigned long dri,
                          vector<size_t> track_ids )
     : orig_alf_( source_alf_path ), new_alf_( new_alf_path, orig_alf_.get_info().width, orig_alf_.get_info().height )
   {
@@ -205,39 +210,56 @@ public:
     combine( new_alf_, orig_alf_ );
 
     for ( size_t track_id : track_ids ) {
-      streams_.emplace_back( orig_alf_.get_frames( track_id ), orig_alf_ );
+      size_t begin_frame = orig_alf_.get_dri_to_frame_index_mapping( track_id, dri )[ 0 ];
+
+      auto track = orig_alf_.get_track_range( track_id, begin_frame, orig_alf_.get_track_size( track_id ) );
+
+      while ( not track.first->is_keyframe() and track.first != track.second ) {
+        track.first++;
+      }
+
+      streams_.emplace_back( track, orig_alf_ );
     }
   }
 
-  void write_continuations()
+  void write_continuations( unsigned long weave_length )
   {
-    int frame = 0;
-    while ( not streams_[ 0 ].eos() ) {
-      cerr << "Weaving frame " << frame << endl;
+    unsigned weaved_frames = 0;
+    bool one_keyframe_reached = false;
+    bool two_keyframe_reached = false;
+
+    while ( ( weaved_frames < weave_length or not one_keyframe_reached or not two_keyframe_reached ) and not streams_[ 0 ].eos() ) {
       for ( StreamState & stream : streams_ ) {
         stream.advance_until_shown();
       }
 
       // Add new starting points for continuations
-      for ( unsigned stream_idx = 0; stream_idx < streams_.size() - 1; stream_idx++ ) {
-        StreamState & source_stream = streams_[ stream_idx ];
-        StreamState & target_stream = streams_[ stream_idx + 1 ];
+      StreamState & source_stream = streams_[ 0 ];
+      StreamState & target_stream = streams_[ 1 ];
 
-        // Insert new copies of switch_player and target_players for continuations starting
-        // at this frame
+      // Insert new copies of switch_player and target_players for continuations starting
+      // at this frame
 
-        target_stream.new_source( source_stream );
+      target_stream.new_source( source_stream );
+      source_stream.new_source( target_stream );
+      
 
-        source_stream.new_source( target_stream );
-      }
-
-      for ( StreamState & stream : streams_ ) {
+      for ( unsigned i = 0; i < streams_.size(); i++ ) {
+        StreamState & stream = streams_[ i ];
         stream.update_switch_players( new_alf_ );
         stream.make_continuations( new_alf_ );
         stream.advance_past_shown();
       }
 
-      frame++;
+      weaved_frames++;
+
+      if ( weaved_frames >= weave_length and source_stream.on_keyframe() ) {
+        one_keyframe_reached = true;
+      }
+
+      if ( weaved_frames >= weave_length and target_stream.on_keyframe() ) {
+        two_keyframe_reached = true;
+      }
     }
 
     for ( StreamState & stream : streams_ ) {
@@ -250,17 +272,20 @@ public:
 
 int main( int argc, const char * const argv[] )
 {
-  if ( argc < 5 ) {
-    cerr << "Usage: " << argv[ 0 ] << " <input-alf> <output-alf> <trajectoryA> <trajectoryB> ..." << endl;
+  if ( argc < 7 ) {
+    cerr << "Usage: " << argv[ 0 ] << " <input-alf> <output-alf> <dri> <weave-length> <trajectoryA> <trajectoryB>" << endl;
     return EXIT_FAILURE;
   }
 
+  unsigned long dri = stoul( argv[ 3 ] );
+  unsigned long weave_length = stoul( argv[ 4 ] );
+
   vector<size_t> track_ids;
-  for ( int i = 3; i < argc; i++ ) {
+  for ( int i = 5; i < 7; i++ ) {
     track_ids.push_back( stoul( argv[ i ] ) );
   }
 
-  ContinuationGenerator generator( argv[ 1 ], argv[ 2 ], track_ids );
+  ContinuationGenerator generator( argv[ 1 ], argv[ 2 ], dri, track_ids );
 
-  generator.write_continuations();
+  generator.write_continuations( weave_length );
 }

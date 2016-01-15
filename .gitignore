@@ -44,6 +44,7 @@ Makefile.in
 /src/frontend/alfalfa-encode
 /src/frontend/alfalfa-server
 /src/frontend/alfalfa-play-manually
+/src/frontend/alfalfa-weave-threads
 /src/frontend/alfalfa-play-super-manually
 /src/frontend/alfalfa-verify
 /src/tests/decode-to-stdout
