@@ -603,8 +603,7 @@ void PlayableAlfalfaVideo::encode( const size_t track_id, vector<string> vpxenc_
   }
 }
 
-void
-combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalfaVideo & video )
+void combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalfaVideo & video )
 {
   if ( not combined_video.can_combine( video ) ) {
     throw invalid_argument( "cannot combine: raster lists are not the same." );
@@ -649,6 +648,38 @@ combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalfaVideo & vid
     }
     item.frame_id = frame_id_mapping[ item.frame_id ];
     combined_video.insert_track_data( item );
+  }
+
+  for ( auto switch_data = video.get_switch_data();
+        switch_data.first != switch_data.second; switch_data.first++ ) {
+    SwitchData item = *switch_data.first;
+    item.from_track_id = track_id_mapping[ item.from_track_id ];
+    item.to_track_id = track_id_mapping[ item.to_track_id ];
+    item.frame_id = frame_id_mapping[ item.frame_id ];
+    combined_video.insert_switch_data( item );
+  }
+}
+
+void switch_combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalfaVideo & video )
+{
+  if ( not combined_video.can_combine( video ) ) {
+    throw invalid_argument( "cannot combine: raster lists are not the same." );
+  }
+  else if ( combined_video.get_raster_list_size() == 0 ) {
+    size_t i;
+    for ( i = 0; i < video.get_raster_list_size(); i++ ) {
+      combined_video.insert_raster( video.get_raster( i ) );
+    }
+  }
+
+  map<size_t, size_t> frame_id_mapping;
+  map<size_t, size_t> track_id_mapping;
+
+  for ( auto frame_data = video.get_frames();
+        frame_data.first != frame_data.second; frame_data.first++ ) {
+    FrameInfo frame_info = *frame_data.first;
+    frame_id_mapping[ frame_info.frame_id() ] = combined_video.insert_frame_data(
+      frame_info, video.get_chunk( frame_info ) );
   }
 
   for ( auto switch_data = video.get_switch_data();
