@@ -178,7 +178,7 @@ public:
   void write_final_switches( WritableAlfalfaVideo & new_alf )
   {
     for ( const SwitchPlayer & player : switch_players_ ) {
-      player.write_switches( new_alf, track_end_ );
+      player.write_switches( new_alf, track_frame_ );
     }
   }
 
@@ -190,6 +190,11 @@ public:
   bool eos( void ) const
   {
     return track_frame_ == track_end_; 
+  }
+  
+  unsigned num_converging() const
+  {
+    return switch_players_.size();
   }
 };
 
@@ -228,7 +233,7 @@ public:
     bool one_keyframe_reached = false;
     bool two_keyframe_reached = false;
 
-    while ( ( weaved_frames < weave_length or not one_keyframe_reached or not two_keyframe_reached ) and not streams_[ 0 ].eos() ) {
+    while ( ( weaved_frames < weave_length or not one_keyframe_reached or not two_keyframe_reached or streams_[ 0 ].num_converging() > 0 or streams_[ 1 ].num_converging() > 0 ) and not streams_[ 0 ].eos() ) {
       for ( StreamState & stream : streams_ ) {
         stream.advance_until_shown();
       }
@@ -240,8 +245,11 @@ public:
       // Insert new copies of switch_player and target_players for continuations starting
       // at this frame
 
-      target_stream.new_source( source_stream );
-      source_stream.new_source( target_stream );
+      if ( not ( weaved_frames >= weave_length and one_keyframe_reached and two_keyframe_reached ) )
+      {
+        target_stream.new_source( source_stream );
+        source_stream.new_source( target_stream );
+      }
       
 
       for ( unsigned i = 0; i < streams_.size(); i++ ) {
