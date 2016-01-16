@@ -272,4 +272,7 @@ void combine( WritableAlfalfaVideo& combined_video,
 void switch_combine( WritableAlfalfaVideo& combined_video,
                      const PlayableAlfalfaVideo & video );
 
+void squash( WritableAlfalfaVideo& combined_video,
+             const PlayableAlfalfaVideo & video );
+
 #endif /* ALFALFA_VIDEO_HH */
