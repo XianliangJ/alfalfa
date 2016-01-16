@@ -673,7 +673,6 @@ void switch_combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalf
   }
 
   map<size_t, size_t> frame_id_mapping;
-  map<size_t, size_t> track_id_mapping;
 
   for ( auto frame_data = video.get_frames();
         frame_data.first != frame_data.second; frame_data.first++ ) {
@@ -685,9 +684,98 @@ void switch_combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalf
   for ( auto switch_data = video.get_switch_data();
         switch_data.first != switch_data.second; switch_data.first++ ) {
     SwitchData item = *switch_data.first;
+    item.frame_id = frame_id_mapping[ item.frame_id ];
+    combined_video.insert_switch_data( item );
+  }
+}
+
+void squash( WritableAlfalfaVideo & squashed_video, const PlayableAlfalfaVideo & video )
+{
+  if ( not squashed_video.can_combine( video ) ) {
+    throw invalid_argument( "cannot combine: raster lists are not the same." );
+  }
+  else if ( squashed_video.get_raster_list_size() == 0 ) {
+    size_t i; 
+    for ( i = 0; i < video.get_raster_list_size(); i++ ) {
+      squashed_video.insert_raster( video.get_raster( i ) );
+    }
+  }
+
+  for ( auto quality_data = video.get_quality_data();
+        quality_data.first != quality_data.second; quality_data.first++ ) {
+    squashed_video.insert_quality_data( *quality_data.first );
+  }
+
+  map<size_t, size_t> frame_id_mapping;
+  map<size_t, size_t> track_id_mapping;
+
+  for ( auto frame_data = video.get_frames();
+        frame_data.first != frame_data.second; frame_data.first++ ) {
+    FrameInfo frame_info = *frame_data.first; 
+    frame_id_mapping[ frame_info.frame_id() ] = squashed_video.insert_frame_data(
+      frame_info, video.get_chunk( frame_info ) );
+  }
+
+  // First, get max_track_id in squashed_video
+  size_t max_track_id = 0;
+  bool squashed_video_empty = true;
+  for ( auto track_ids = squashed_video.get_track_ids();
+        track_ids.first != track_ids.second; track_ids.first++ ) {
+    size_t track_id = *track_ids.first;
+    squashed_video_empty = false;
+    if ( track_id > max_track_id )
+      max_track_id = track_id;
+  }
+
+  // Now, create new track id mapping similar to combine, but with one key
+  // difference: map the smallest track_id in video to the largest track_id in
+  // combined_video automatically
+
+  // Compute the min_track_id in video
+  size_t min_track_id = SIZE_MAX;
+  for ( auto track_ids = video.get_track_ids();
+        track_ids.first != track_ids.second; track_ids.first++ ) {
+    size_t track_id = *track_ids.first;
+    if ( track_id < min_track_id )
+      min_track_id = track_id;
+  }
+
+  for ( auto track_data = video.get_track_data();
+        track_data.first != track_data.second; track_data.first++ ) {
+    TrackData item = *track_data.first;
+    bool insert_into_track_db = true;
+    if ( item.track_id == min_track_id ) {
+      track_id_mapping[ item.track_id ] = max_track_id;
+      item.track_id = track_id_mapping[ item.track_id ];
+      if ( not squashed_video_empty ) {
+        insert_into_track_db = false;
+      }
+    }
+    else if ( track_id_mapping.count( item.track_id ) > 0 ) {
+      item.track_id = track_id_mapping[ item.track_id ];
+    }
+    else if ( squashed_video.has_track( item.track_id ) ) {
+      size_t new_track_id = item.track_id;
+      while ( squashed_video.has_track( new_track_id ) ) {
+        new_track_id++;
+      }
+      track_id_mapping[ item.track_id ] = new_track_id;
+      item.track_id = new_track_id;
+    } else {
+      track_id_mapping[ item.track_id ] = item.track_id;
+    }
+    item.frame_id = frame_id_mapping[ item.frame_id ];
+    if ( insert_into_track_db ) {
+      squashed_video.insert_track_data( item );
+    }
+  }
+
+  for ( auto switch_data = video.get_switch_data();
+        switch_data.first != switch_data.second; switch_data.first++ ) {
+    SwitchData item = *switch_data.first;
     item.from_track_id = track_id_mapping[ item.from_track_id ];
     item.to_track_id = track_id_mapping[ item.to_track_id ];
     item.frame_id = frame_id_mapping[ item.frame_id ];
-    combined_video.insert_switch_data( item );
+    squashed_video.insert_switch_data( item );
   }
 }
