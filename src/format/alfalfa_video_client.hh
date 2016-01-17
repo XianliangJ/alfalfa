@@ -76,7 +76,7 @@ public:
 
   /* Gets ALL switches ending with the given frame. */
   std::vector<SwitchInfo>
-  get_switches_ending_with_frame( const size_t frame_id ) const;
+  get_switches_with_frame( const size_t frame_id ) const;
 
   /* Getters for width and height. */
   size_t get_video_width() const;

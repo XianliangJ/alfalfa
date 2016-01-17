@@ -87,9 +87,9 @@ public:
                                                           const AlfalfaProtobufs::TrackPositionDisplayedRasterIndex * track_pos_dri,
                                                           AlfalfaProtobufs::SizeT * response ) override;
 
-  grpc::Status get_switches_ending_with_frame( grpc::ServerContext * context,
-                                               const AlfalfaProtobufs::SizeT * frame_id,
-                                               AlfalfaProtobufs::Switches * switches ) override;
+  grpc::Status get_switches_with_frame( grpc::ServerContext * context,
+                                        const AlfalfaProtobufs::SizeT * frame_id,
+                                        AlfalfaProtobufs::Switches * switches ) override;
 
   /* Getters for width and height. */
   grpc::Status get_video_width( grpc::ServerContext * context,
