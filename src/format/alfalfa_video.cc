@@ -689,7 +689,8 @@ void switch_combine( WritableAlfalfaVideo & combined_video, const PlayableAlfalf
   }
 }
 
-void squash( WritableAlfalfaVideo & squashed_video, const PlayableAlfalfaVideo & video )
+void squash( WritableAlfalfaVideo & squashed_video, const PlayableAlfalfaVideo & video,
+             const map<size_t, size_t> & apriori_track_id_mapping )
 {
   if ( not squashed_video.can_combine( video ) ) {
     throw invalid_argument( "cannot combine: raster lists are not the same." );
@@ -716,40 +717,17 @@ void squash( WritableAlfalfaVideo & squashed_video, const PlayableAlfalfaVideo &
       frame_info, video.get_chunk( frame_info ) );
   }
 
-  // First, get max_track_id in squashed_video
-  size_t max_track_id = 0;
-  bool squashed_video_empty = true;
-  for ( auto track_ids = squashed_video.get_track_ids();
-        track_ids.first != track_ids.second; track_ids.first++ ) {
-    size_t track_id = *track_ids.first;
-    squashed_video_empty = false;
-    if ( track_id > max_track_id )
-      max_track_id = track_id;
-  }
-
-  // Now, create new track id mapping similar to combine, but with one key
-  // difference: map the smallest track_id in video to the largest track_id in
-  // combined_video automatically
-
-  // Compute the min_track_id in video
-  size_t min_track_id = SIZE_MAX;
-  for ( auto track_ids = video.get_track_ids();
-        track_ids.first != track_ids.second; track_ids.first++ ) {
-    size_t track_id = *track_ids.first;
-    if ( track_id < min_track_id )
-      min_track_id = track_id;
-  }
+  // Now, create new track id mapping similar to combine, at the same time respecting
+  // the apriori track id mapping
 
   for ( auto track_data = video.get_track_data();
         track_data.first != track_data.second; track_data.first++ ) {
     TrackData item = *track_data.first;
     bool insert_into_track_db = true;
-    if ( item.track_id == min_track_id ) {
-      track_id_mapping[ item.track_id ] = max_track_id;
+    if ( apriori_track_id_mapping.count( item.track_id ) > 0 ) {
+      track_id_mapping[ item.track_id ] = apriori_track_id_mapping.at( item.track_id );
       item.track_id = track_id_mapping[ item.track_id ];
-      if ( not squashed_video_empty ) {
-        insert_into_track_db = false;
-      }
+      insert_into_track_db = false;
     }
     else if ( track_id_mapping.count( item.track_id ) > 0 ) {
       item.track_id = track_id_mapping[ item.track_id ];
