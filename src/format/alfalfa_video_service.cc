@@ -21,6 +21,19 @@ public:
   }
 };
 
+Status AlfalfaVideoServiceImpl::get_quality( ServerContext *,
+		                             const AlfalfaProtobufs::QualityInput * quality_input,
+                                             AlfalfaProtobufs::Double * response )
+{
+  Log( "get_quality" );
+
+  QualityInput quality_input_deserialized( *quality_input );
+  response->CopyFrom( Double( video_.get_quality( quality_input_deserialized.dri,
+                                                  quality_input_deserialized.frame_info ) ).to_protobuf() );
+
+  return Status::OK;
+}
+
 Status AlfalfaVideoServiceImpl::get_track_size( ServerContext *,
                                                 const AlfalfaProtobufs::SizeT * track_id,
                                                 AlfalfaProtobufs::SizeT * response )

@@ -130,6 +130,43 @@ SwitchData::to_protobuf() const
   return message;
 }
 
+QualityInput::QualityInput( const int dri, const FrameInfo frame_info )
+  : dri( dri ),
+    frame_info( frame_info )
+{}
+
+QualityInput::QualityInput( const AlfalfaProtobufs::QualityInput & message )
+  : dri( message.dri() ),
+    frame_info( message.frame_info() )
+{}
+
+AlfalfaProtobufs::QualityInput
+QualityInput::to_protobuf() const
+{
+  AlfalfaProtobufs::QualityInput message;
+
+  message.set_dri( dri );
+  *message.mutable_frame_info() = frame_info.to_protobuf();
+
+  return message;
+}
+
+Double::Double( const double d )
+  : d( d )
+{}
+
+Double::Double( const AlfalfaProtobufs::Double & message )
+  : d( message.d() )
+{}
+
+AlfalfaProtobufs::Double
+Double::to_protobuf() const
+{
+  AlfalfaProtobufs::Double message;
+  message.set_d( d );
+  return message;
+}
+
 SizeT::SizeT( const size_t sizet )
   : sizet( sizet )
 {}

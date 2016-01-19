@@ -28,11 +28,13 @@ using DependencyVertex = std::pair<DependencyType, size_t /* hash */>;
 struct FrameSequence
 {
   const std::vector<FrameInfo> frame_seq;
-  // TODO: Add fields here as required by QoS metric: cost, average SSIM score,
-  // max SSIM score, min SSIM score, etc.
+  // TODO: Add more fields here as required by QoS metric: cost, average SSIM score,
+  // max SSIM score, etc.
+  double min_ssim;
 
-  FrameSequence( const std::vector<FrameInfo> frame_seq )
-    : frame_seq( frame_seq )
+  FrameSequence( const std::vector<FrameInfo> frame_seq, double min_ssim )
+    : frame_seq( frame_seq ),
+      min_ssim( min_ssim )
   {}
 };
 
@@ -185,7 +187,7 @@ private:
   Optional<RasterHandle> get_raster_switch_path( const size_t output_hash );
   Optional<RasterHandle> get_raster_track_path( const size_t output_hash );
 
-  std::vector<FrameInfo> get_frame_seq( const SwitchInfo & switch_info );
+  FrameSequence get_frame_seq( const SwitchInfo & switch_info, const size_t dri );
 
 public:
   AlfalfaPlayer( const std::string & server_address );
@@ -212,8 +214,11 @@ public:
   // the QoS metric for the frame sequence.
   std::vector<FrameSequence> get_sequential_play_options( const size_t dri,
                                                           const size_t throughput_estimate );
+  // Get all sequences of frames possible while random seeking. Throughput estimate
+  // is not considered here, since all options will involve some amount of buffering.
+  std::vector<FrameSequence> get_random_seek_play_options( const size_t dri );
 
-  std::vector<FrameInfo> seek_track_at_dri( const size_t track_id, const size_t dri );
+  FrameSequence seek_track_at_dri( const size_t track_id, const size_t dri );
   std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t dri,
                                                             const size_t to_track_id );
 

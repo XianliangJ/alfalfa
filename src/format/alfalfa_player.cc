@@ -573,14 +573,27 @@ AlfalfaPlayer::determine_feasibility( const vector<FrameInfo> prospective_track,
   return true;
 }
 
-vector<FrameInfo>
+FrameSequence
 AlfalfaPlayer::seek_track_at_dri( const size_t track_id, const size_t dri )
 {
   size_t frame_index = video_.get_frame_index_by_displayed_raster_index( track_id, dri );
   auto track_seek = get_track_seek( track_id, frame_index );
   size_t from_frame_index = get<0>( track_seek );
-  return video_.get_frames( track_id, from_frame_index,
-                            video_.get_track_size( track_id ) );
+  vector<FrameInfo> frame_seq = video_.get_frames( track_id, from_frame_index,
+    video_.get_track_size( track_id ) );
+
+  double min_ssim = SIZE_MAX;
+  int dri_index = (int) dri;
+  for ( FrameInfo frame : frame_seq ) {
+    if ( frame.shown() ) {
+      double ssim = video_.get_quality( dri_index, frame );
+      if ( ssim < min_ssim )
+        min_ssim = ssim;
+      dri_index++;
+    }
+  }
+
+  return FrameSequence( frame_seq, min_ssim );
 }
 
 vector<SwitchInfo>
@@ -606,25 +619,45 @@ AlfalfaPlayer::seek_track_through_switch_at_dri( const size_t dri, const size_t 
   return switch_infos;
 }
 
-vector<FrameInfo>
-AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info )
+FrameSequence
+AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
 {
+  int dri_index = (int) dri;
+  double min_ssim = SIZE_MAX;
   vector<FrameInfo> switch_frame_seq_vec;
   for ( FrameInfo frame : video_.get_frames(
     current_track_id_, current_track_index_, switch_info.from_frame_index ) ) {
     switch_frame_seq_vec.push_back( frame );
+    if ( frame.shown() ) {
+      double ssim = video_.get_quality( dri_index, frame );
+      if ( ssim < min_ssim )
+        min_ssim = ssim;
+      dri_index++;
+    }
   }
 
   for ( FrameInfo frame : switch_info.frames ) {
     switch_frame_seq_vec.push_back( frame );
+    if ( frame.shown() ) {
+      double ssim = video_.get_quality( dri_index, frame );
+      if ( ssim < min_ssim )
+        min_ssim = ssim;
+      dri_index++;
+    }
   }
 
   for ( FrameInfo frame : video_.get_frames(
     switch_info.to_track_id, switch_info.to_frame_index, video_.get_track_size( switch_info.to_track_id ) ) ) {
     switch_frame_seq_vec.push_back( frame );
+    if ( frame.shown() ) {
+      double ssim = video_.get_quality( dri_index, frame );
+      if ( ssim < min_ssim )
+        min_ssim = ssim;
+      dri_index++;
+    }
   }
 
-  return switch_frame_seq_vec;
+  return FrameSequence( switch_frame_seq_vec, min_ssim );
 }
 
 vector<FrameSequence>
@@ -634,9 +667,8 @@ AlfalfaPlayer::get_sequential_play_options( const size_t dri, const size_t throu
   // current track is implicitly handled under this case
   vector<FrameSequence> frame_seqs;
   for ( size_t track_id : video_.get_track_ids() ) {
-    vector<FrameInfo> frame_seq_vec = seek_track_at_dri( track_id, dri );
-    if ( determine_feasibility( frame_seq_vec, throughput_estimate ) ) {
-      FrameSequence frame_seq( frame_seq_vec );
+    FrameSequence frame_seq = seek_track_at_dri( track_id, dri );
+    if ( determine_feasibility( frame_seq.frame_seq, throughput_estimate ) ) {
       frame_seqs.push_back( frame_seq );
     }
   }
@@ -645,13 +677,27 @@ AlfalfaPlayer::get_sequential_play_options( const size_t dri, const size_t throu
   for ( size_t to_track_id : video_.get_connected_track_ids( current_track_id_ ) ) {
     vector<SwitchInfo> switch_infos = seek_track_through_switch_at_dri( dri, to_track_id );
     for ( auto switch_info : switch_infos ) {
-      vector<FrameInfo> switch_frame_seq_vec = get_frame_seq( switch_info );
-      if ( determine_feasibility( switch_frame_seq_vec, throughput_estimate ) ) {
-        FrameSequence frame_seq( switch_frame_seq_vec );
+      FrameSequence frame_seq = get_frame_seq( switch_info, dri );
+      // Take the earliest switch that is feasible
+      if ( determine_feasibility( frame_seq.frame_seq, throughput_estimate ) ) {
         frame_seqs.push_back( frame_seq );
         break;
       }
     }
+  }
+
+  return frame_seqs;
+}
+
+vector<FrameSequence>
+AlfalfaPlayer::get_random_seek_play_options( const size_t dri )
+{
+  vector<FrameSequence> frame_seqs;
+  // Very similar to the code above for get_sequential_play_options, but with one key
+  // differece: no feasibility checks
+  for ( size_t track_id : video_.get_track_ids() ) {
+    FrameSequence frame_seq = seek_track_at_dri( track_id, dri );
+    frame_seqs.push_back( frame_seq );
   }
 
   return frame_seqs;

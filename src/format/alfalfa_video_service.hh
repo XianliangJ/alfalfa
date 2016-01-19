@@ -25,6 +25,10 @@ public:
   }
   
   /* NOTE: For better specifications, look at alfalfa_video_client.hh. */
+  grpc::Status get_quality( grpc::ServerContext * context,
+                            const AlfalfaProtobufs::QualityInput * quality_input,
+                            AlfalfaProtobufs::Double * quality ) override;
+
   /* Get size of a track. */
   grpc::Status get_track_size( grpc::ServerContext * context,
                                const AlfalfaProtobufs::SizeT * track_id,

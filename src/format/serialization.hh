@@ -88,6 +88,27 @@ struct SwitchData
   AlfalfaProtobufs::SwitchData to_protobuf() const;
 };
 
+struct QualityInput
+{
+  int dri;
+  FrameInfo frame_info;
+
+  QualityInput( const int dri, const FrameInfo frame_info );
+  QualityInput( const AlfalfaProtobufs::QualityInput & message );
+
+  AlfalfaProtobufs::QualityInput to_protobuf() const;
+};
+
+struct Double
+{
+  double d;
+
+  Double( const double d );
+  Double( const AlfalfaProtobufs::Double & message );
+
+  AlfalfaProtobufs::Double to_protobuf() const;
+};
+
 struct SizeT
 {
   size_t sizet;

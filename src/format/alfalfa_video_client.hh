@@ -30,7 +30,11 @@ public:
   TrackData get_frame( const size_t track_id, const size_t frame_index ) const;
 
   /* Get a raster hash given raster_index. */
-  size_t get_raster( const size_t raster_index ) const;
+  size_t get_raster( const size_t displayed_raster_index ) const;
+
+  /* Get the quality of the frame associated with the passed-in frame_ingo, given
+     the corresponding displayed_raster_index. */
+  double get_quality( const int displayed_raster_index, const FrameInfo & frame_info ) const;
 
   /* Gets frames in the given track, between the provided indices --
      here, start_frame_index is included and end_frame_index is

@@ -67,6 +67,15 @@ message SwitchData {
   required uint64 switch_frame_index = 6;
 }
 
+message QualityInput {
+  required int64 dri = 1;
+  required FrameInfo frame_info = 2;
+}
+
+message Double {
+  required double d = 1;
+}
+
 message SizeT {
   required uint64 sizet = 1;
 }
@@ -135,6 +144,7 @@ message Empty {
 
 service AlfalfaVideo {
   rpc get_url( Empty ) returns ( URL ) {}
+  rpc get_quality( QualityInput ) returns ( Double ) {}
   rpc get_track_size( SizeT ) returns ( SizeT ) {}
   rpc get_frame_by_id( SizeT ) returns ( FrameInfo ) {}
   rpc get_frame_by_track_pos( TrackPosition ) returns ( TrackData ) {}

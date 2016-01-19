@@ -51,6 +51,17 @@ AlfalfaVideoClient::get_raster( const size_t raster_index ) const
   return SizeT( response ).sizet;
 }
 
+double
+AlfalfaVideoClient::get_quality( const int dri, const FrameInfo & frame_info ) const
+{
+  ClientContext context;
+  AlfalfaProtobufs::QualityInput quality_input = QualityInput( dri, frame_info ).to_protobuf();
+  AlfalfaProtobufs::Double response;
+  RPC( "get_quality",
+    stub_->get_quality( &context, quality_input, &response ) );
+  return Double( response ).d;
+}
+
 vector<FrameInfo>
 AlfalfaVideoClient::get_frames( const size_t track_id, const size_t start_frame_index,
                                 const size_t end_frame_index ) const
