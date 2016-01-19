@@ -138,6 +138,7 @@ AlfalfaVideo::AlfalfaVideo( const std::string & name )
     switch_db_( directory_.switch_db() )
 {
   initialize_dri_to_frame_index_mapping();
+  initialize_connected_track_ids();
 }
 
 AlfalfaVideo::AlfalfaVideo( AlfalfaVideo && other )
@@ -150,6 +151,7 @@ AlfalfaVideo::AlfalfaVideo( AlfalfaVideo && other )
     switch_db_( move( other.switch_db_ ) )
 {
   initialize_dri_to_frame_index_mapping();
+  initialize_connected_track_ids();
 }
 
 void AlfalfaVideo::initialize_dri_to_frame_index_mapping()
@@ -164,6 +166,19 @@ void AlfalfaVideo::initialize_dri_to_frame_index_mapping()
         displayed_raster_index++;
       }
       frame_index++;
+    }
+  }
+}
+
+void AlfalfaVideo::initialize_connected_track_ids()
+{
+  for ( auto track_ids1 = get_track_ids(); track_ids1.first != track_ids1.second; track_ids1.first++ ) {
+    size_t track_id1 = *track_ids1.first;
+    for ( auto track_ids2 = get_track_ids(); track_ids2.first != track_ids2.second; track_ids2.first++ ) {
+      size_t track_id2 = *track_ids2.first;
+      if ( switch_db_.has_switch( track_id1, track_id2, 0 ) ) {
+        connected_track_ids_[ track_id1 ].insert( track_id2 );
+      }
     }
   }
 }
@@ -466,6 +481,8 @@ WritableAlfalfaVideo::insert_switch_frames( const TrackDBIterator & origin_itera
   size_t to_track_id = dest_iterator.track_id();
   size_t to_frame_index = dest_iterator.frame_index();
   size_t switch_frame_index = 0;
+
+  connected_track_ids_[ from_track_id ].insert( to_track_id );
 
   for (FrameInfo frame : frames) {
     size_t frame_id = frame_db_.insert( frame );

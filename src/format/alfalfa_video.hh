@@ -64,6 +64,7 @@ public:
 
 private:
   void initialize_dri_to_frame_index_mapping();
+  void initialize_connected_track_ids();
 
 protected:
   VideoDirectory directory_;
@@ -79,6 +80,8 @@ protected:
      displayed raster. (here dri stands for displayed_raster_index).
      This is a map from track_id to (map from dri to vector of all frame_indies) */
   std::unordered_map<size_t, std::unordered_map<size_t, std::vector<size_t>>> dri_to_frame_index_mapping_ {};
+  /* Required to easily figure out which track_ids one can go to through a switch. */
+  std::map<size_t, std::unordered_set<size_t>> connected_track_ids_ {};
 
   AlfalfaVideo( const uint16_t width, const uint16_t height,
 		const std::string & name ); /* new blank video */
@@ -135,6 +138,8 @@ public:
   /* Gets an iterator over all available track ids, in no particular order. */
   std::pair<std::unordered_set<size_t>::const_iterator, std::unordered_set<size_t>::const_iterator>
   get_track_ids() const;
+
+  std::unordered_set<size_t> get_connected_track_ids( const size_t from_track_id ) const { return connected_track_ids_.at( from_track_id ); }
 
   std::pair<TrackDBCollectionByFrameIdIndex::const_iterator, TrackDBCollectionByFrameIdIndex::const_iterator>
   get_track_data_by_frame_id( const size_t frame_id ) const { return track_db_.search_by_frame_id( frame_id ); }

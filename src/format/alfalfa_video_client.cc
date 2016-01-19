@@ -143,6 +143,17 @@ AlfalfaVideoClient::get_track_ids() const
   return TrackIdsIterator( response ).track_ids;
 }
 
+vector<size_t>
+AlfalfaVideoClient::get_connected_track_ids( const size_t from_track_id ) const
+{
+  ClientContext context;
+  AlfalfaProtobufs::SizeT track_id_serialized = SizeT( from_track_id ).to_protobuf();
+  AlfalfaProtobufs::TrackIdsIterator response;
+  RPC( "get_connected_track_ids",
+    stub_->get_connected_track_ids( &context, track_id_serialized, &response ) );
+  return TrackIdsIterator( response ).track_ids;
+}
+
 vector<TrackData>
 AlfalfaVideoClient::get_track_data_by_frame_id( const size_t frame_id ) const
 {

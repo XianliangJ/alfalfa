@@ -63,6 +63,8 @@ public:
   std::vector<size_t>
   get_track_ids() const;
 
+  std::vector<size_t> get_connected_track_ids( const size_t from_track_id ) const;
+
   /* Gets an iterator over track data for a given frame_id -- TrackData's
      are returned in no particular order. */
   std::vector<TrackData>

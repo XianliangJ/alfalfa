@@ -78,7 +78,12 @@ public:
                               const AlfalfaProtobufs::Empty * empty,
                               AlfalfaProtobufs::TrackIdsIterator * track_ids_iterator ) override;
 
-   /* Gets an iterator over track data for a given frame_id / track_id + displayed_raster_index. */
+    /* Gets an iterator over all available track ids. */
+  grpc::Status get_connected_track_ids( grpc::ServerContext * context,
+                                        const AlfalfaProtobufs::SizeT * from_track_id,
+                                        AlfalfaProtobufs::TrackIdsIterator * track_ids_iterator ) override;
+
+  /* Gets an iterator over track data for a given frame_id / track_id + displayed_raster_index. */
   grpc::Status get_track_data_by_frame_id( grpc::ServerContext * context,
                                            const AlfalfaProtobufs::SizeT * frame_id,
                                            AlfalfaProtobufs::TrackDataIterator * track_data_iterator ) override;

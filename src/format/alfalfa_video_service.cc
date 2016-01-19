@@ -204,6 +204,23 @@ Status AlfalfaVideoServiceImpl::get_track_ids( ServerContext *,
   return Status::OK;
 }
 
+Status AlfalfaVideoServiceImpl::get_connected_track_ids( ServerContext *,
+                                                         const AlfalfaProtobufs::SizeT *from_track_id,
+                                                         AlfalfaProtobufs::TrackIdsIterator * response )
+{
+  Log( "get_connected_track_ids" );
+
+  SizeT from_track_id_deserialized( *from_track_id );
+  unordered_set<size_t> track_ids = video_.get_connected_track_ids( from_track_id_deserialized.sizet );
+  TrackIdsIterator track_ids_iterator;
+  for ( size_t track_id : track_ids ) {
+    track_ids_iterator.track_ids.push_back( track_id );
+  }
+
+  response->CopyFrom( track_ids_iterator.to_protobuf() );
+  return Status::OK;
+}
+
 Status AlfalfaVideoServiceImpl::get_track_data_by_frame_id( ServerContext *,
                                                             const AlfalfaProtobufs::SizeT * frame_id,
                                                             AlfalfaProtobufs::TrackDataIterator * response )
