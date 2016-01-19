@@ -25,6 +25,17 @@ enum PathType
 
 using DependencyVertex = std::pair<DependencyType, size_t /* hash */>;
 
+struct FrameSequence
+{
+  const std::vector<FrameInfo> frame_seq;
+  // TODO: Add fields here as required by QoS metric: cost, average SSIM score,
+  // max SSIM score, min SSIM score, etc.
+
+  FrameSequence( const std::vector<FrameInfo> frame_seq )
+    : frame_seq( frame_seq )
+  {}
+};
+
 template <class ObjectType>
 class LRUCache
 {
@@ -74,13 +85,17 @@ private:
   FrameFetcher web_;
   RasterAndStateCache cache_;
 
-  /* Current number of bytes in frame buffer -- used for optimal track determination. */
+  /* Current number of bytes in frame buffer -- used for optimal track determination.
+     Can be thought of as the total number of bytes the playhead is behind the downloader. */
   size_t downloaded_frame_bytes_;
   /* Sequence of frames currently being played by the player -- could be frames
      on a track, frames on a switch, or both. */
   std::vector<FrameInfo> current_track_;
-  /* Index of next frame in current_track_ that needs to be downloaded. */
+  size_t current_track_id_;
+  /* Index of next frame in current_track_ that needs to be downloaded, along with
+     current index of the play head. */
   size_t current_track_index_;
+  size_t current_playhead_index_;
 
   LRUCache<Chunk> frame_cache_ {};
 
@@ -170,6 +185,8 @@ private:
   Optional<RasterHandle> get_raster_switch_path( const size_t output_hash );
   Optional<RasterHandle> get_raster_track_path( const size_t output_hash );
 
+  std::vector<FrameInfo> get_frame_seq( const SwitchInfo & switch_info );
+
 public:
   AlfalfaPlayer( const std::string & server_address );
 
@@ -183,15 +200,21 @@ public:
   /* Move current pointer position up by 1, and retrieve chunk from server.
      Also store chunk in local client-side cache, evicting element if needed. */
   Chunk get_next_chunk();
+
   /* Determine if it's possible to play the provided sequence of frames, given the
      provided throughput estimate. */
   bool determine_feasibility( const std::vector<FrameInfo> prospective_track,
-                              const size_t throughput_estimate,
-                              const size_t switching_track_index );
+                              const size_t throughput_estimate );
+
+  // Get all sequences of frames possible while sequentially playing, keeping in mind
+  // the provided throughput estimate. Only feasible frame sequences are returned.
+  // Each FrameSequence object will also eventually contain enough metadata to compute
+  // the QoS metric for the frame sequence.
+  std::vector<FrameSequence> get_sequential_play_options( const size_t dri,
+                                                          const size_t throughput_estimate );
 
   std::vector<FrameInfo> seek_track_at_dri( const size_t track_id, const size_t dri );
-  std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t track_id,
-                                                            const size_t dri,
+  std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t dri,
                                                             const size_t to_track_id );
 
   size_t cache_size() { return cache_.size(); }
