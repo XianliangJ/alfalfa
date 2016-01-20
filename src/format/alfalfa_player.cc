@@ -330,10 +330,11 @@ AlfalfaPlayer::AlfalfaPlayer( const std::string & server_address )
     web_( video_.get_url() ),
     cache_(),
     downloaded_frame_bytes_( 0 ),
-    current_track_(),
+    current_frame_seq_(),
     current_track_id_( 0 ),
-    current_track_index_( 0 ),
-    current_playhead_index_( 0 )
+    current_download_pt_index_( 0 ),
+    current_playhead_index_( 0 ),
+    current_download_pt_dri_( 0 )
 {}
 
 Decoder AlfalfaPlayer::get_decoder( const FrameInfo & frame )
@@ -507,29 +508,21 @@ const VP8Raster & AlfalfaPlayer::example_raster()
   return temp.example_raster();
 }
 
-void
-AlfalfaPlayer::set_current_track( const size_t track_id, const size_t frame_index )
-{
-  size_t track_size = video_.get_track_size( track_id );
-  current_track_ = video_.get_frames( track_id, frame_index, track_size );
-  current_track_id_ = track_id;
-  downloaded_frame_bytes_ = 0;
-  current_track_index_ = 0;
-  current_playhead_index_ = 0;
-}
-
 Chunk
 AlfalfaPlayer::get_next_chunk()
 {
-  if ( current_track_index_ >= current_track_.size() )
+  if ( current_download_pt_index_ >= current_frame_seq_.size() )
     throw runtime_error( "No chunks remaining to get" );
 
-  FrameInfo frame = current_track_.at( current_track_index_ );
-  string chunk = web_.get_chunk( frame );
+  FrameInfo frame = current_frame_seq_.at( current_download_pt_index_ );
+  Chunk chunk = web_.get_chunk( frame );
 
   frame_cache_.put( frame.frame_id(), chunk );
   downloaded_frame_bytes_ += frame.length();
-  current_track_index_++;
+  current_download_pt_index_++;
+  if ( frame.shown() ) {
+    current_download_pt_dri_++;
+  }
 
   return chunk;
 }
@@ -543,15 +536,15 @@ AlfalfaPlayer::determine_feasibility( const vector<FrameInfo> prospective_track,
   size_t prospective_track_index = 0;
 
   /* Currently assuming that the switch is made just before the frame at the index
-     switching_track_index in the current_track_; frames in prospective_track_ are
+     switching_track_index in the current_frame_seq_; frames in prospective_track_ are
      subsequently played. */
-  while( track_index < current_track_index_ or
+  while( track_index < current_download_pt_index_ or
          prospective_track_index < prospective_track.size() )
   {
     size_t frame_id;
     size_t frame_length;
-    if ( track_index < current_track_index_ ) {
-      FrameInfo frame = current_track_.at( track_index );
+    if ( track_index < current_download_pt_index_ ) {
+      FrameInfo frame = current_frame_seq_.at( track_index );
       frame_id = frame.frame_id();
       frame_length = frame.length();
       track_index++;
@@ -566,7 +559,7 @@ AlfalfaPlayer::determine_feasibility( const vector<FrameInfo> prospective_track,
       buffer_size -= ( frame_length );
     }
 
-    // If buffer size is ever negative, proposed switch is infeasible
+    // If buffer size is ever negative, proposed sequence of frames is infeasible
     if ( buffer_size < 0 )
       return false;
   }
@@ -626,7 +619,7 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
   double min_ssim = SIZE_MAX;
   vector<FrameInfo> switch_frame_seq_vec;
   for ( FrameInfo frame : video_.get_frames(
-    current_track_id_, current_track_index_, switch_info.from_frame_index ) ) {
+    current_track_id_, current_download_pt_index_, switch_info.from_frame_index ) ) {
     switch_frame_seq_vec.push_back( frame );
     if ( frame.shown() ) {
       double ssim = video_.get_quality( dri_index, frame );
@@ -701,6 +694,51 @@ AlfalfaPlayer::get_random_seek_play_options( const size_t dri )
   }
 
   return frame_seqs;
+}
+
+void
+AlfalfaPlayer::set_current_frame_seq( const size_t dri, const size_t throughput_estimate, bool random_seek )
+{
+  // First, get the options to be played, depending on whether we're doing a random
+  // seek or not
+  vector<FrameSequence> play_options;
+  if ( random_seek ) {
+    play_options = get_random_seek_play_options( dri );
+  } else {
+    play_options = get_sequential_play_options( dri, throughput_estimate );
+  }
+
+  // Now, pick the optimal frame sequence, based on a QoS metric.
+  // For now, our QoS metric is the minimum SSIM score.
+  size_t optimal_frame_sequence_index = 0;
+  size_t optimal_cost = 0;
+
+  size_t i;
+  for ( i = 0; i < play_options.size(); i++ ) {
+    if ( play_options.at( i ).min_ssim > optimal_cost ) {
+      optimal_frame_sequence_index = i;
+      optimal_cost = play_options.at( i ).min_ssim;
+    }
+  }
+
+  vector<FrameInfo> next_frames = play_options.at( optimal_frame_sequence_index ).frame_seq;
+  if ( random_seek ) {
+    current_frame_seq_ = next_frames;
+    current_download_pt_index_ = 0;
+    current_playhead_index_ = 0;
+    current_download_pt_dri_ = dri;
+    // TODO: Set current_track_id_ here
+  } else {
+    size_t i;
+    for ( i = current_download_pt_index_; i < current_frame_seq_.size(); i++ ) {
+      current_frame_seq_.pop_back();
+    }
+    for ( FrameInfo frame : next_frames ) {
+      current_frame_seq_.push_back( frame );
+    }
+    // download_pt_index, playhead_index and download_pt_dri are all unchanged
+    // TODO: Set current_track_id_ here
+  }
 }
 
 void AlfalfaPlayer::clear_cache()
