@@ -25,14 +25,25 @@ enum PathType
 
 using DependencyVertex = std::pair<DependencyType, size_t /* hash */>;
 
+struct FrameInfoWrapper
+{
+  FrameInfo frame_info;
+  size_t track_id;
+
+  FrameInfoWrapper( const FrameInfo & frame_info, const size_t track_id )
+    : frame_info( frame_info ),
+      track_id( track_id )
+  {}
+};
+
 struct FrameSequence
 {
-  const std::vector<FrameInfo> frame_seq;
+  const std::vector<FrameInfoWrapper> frame_seq;
   // TODO: Add more fields here as required by QoS metric: cost, average SSIM score,
   // max SSIM score, etc.
   double min_ssim;
 
-  FrameSequence( const std::vector<FrameInfo> frame_seq, double min_ssim )
+  FrameSequence( const std::vector<FrameInfoWrapper> frame_seq, double min_ssim )
     : frame_seq( frame_seq ),
       min_ssim( min_ssim )
   {}
@@ -92,9 +103,7 @@ private:
   size_t downloaded_frame_bytes_;
   /* Sequence of frames currently being played by the player -- could be frames
      on a track, frames on a switch, or both. */
-  std::vector<FrameInfo> current_frame_seq_;
-  // TODO: Make sure this is set correctly in the face of switches
-  size_t current_track_id_;
+  std::vector<FrameInfoWrapper> current_frame_seq_;
   /* Index of next frame in current_frame_seq_ that needs to be downloaded, along with
      current index of the play head. */
   size_t current_download_pt_index_;
@@ -193,7 +202,7 @@ private:
 
   /* Determine if it's possible to play the provided sequence of frames, given the
      provided throughput estimate. */
-  bool determine_feasibility( const std::vector<FrameInfo> prospective_track,
+  bool determine_feasibility( const std::vector<FrameInfoWrapper> prospective_track,
                               const size_t throughput_estimate );
 
   // Get all sequences of frames possible while sequentially playing, keeping in mind
@@ -207,7 +216,8 @@ private:
   std::vector<FrameSequence> get_random_seek_play_options( const size_t dri );
 
   FrameSequence seek_track_at_dri( const size_t track_id, const size_t dri );
-  std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t dri,
+  std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t from_track_id,
+                                                            const size_t dri,
                                                             const size_t to_track_id );
 public:
   AlfalfaPlayer( const std::string & server_address );
