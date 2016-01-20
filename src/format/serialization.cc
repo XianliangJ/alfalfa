@@ -130,7 +130,7 @@ SwitchData::to_protobuf() const
   return message;
 }
 
-QualityInput::QualityInput( const int dri, const FrameInfo frame_info )
+QualityInput::QualityInput( const int dri, const FrameInfo & frame_info )
   : dri( dri ),
     frame_info( frame_info )
 {}

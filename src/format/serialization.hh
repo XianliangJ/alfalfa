@@ -93,7 +93,7 @@ struct QualityInput
   int dri;
   FrameInfo frame_info;
 
-  QualityInput( const int dri, const FrameInfo frame_info );
+  QualityInput( const int dri, const FrameInfo & frame_info );
   QualityInput( const AlfalfaProtobufs::QualityInput & message );
 
   AlfalfaProtobufs::QualityInput to_protobuf() const;
