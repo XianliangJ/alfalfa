@@ -29,10 +29,12 @@ struct FrameInfoWrapper
 {
   FrameInfo frame_info;
   size_t track_id;
+  size_t dri;
 
-  FrameInfoWrapper( const FrameInfo & frame_info, const size_t track_id )
+  FrameInfoWrapper( const FrameInfo & frame_info, const size_t track_id, const size_t dri )
     : frame_info( frame_info ),
-      track_id( track_id )
+      track_id( track_id ),
+      dri( dri )
   {}
 };
 
@@ -108,7 +110,6 @@ private:
      current index of the play head. */
   size_t current_download_pt_index_;
   size_t current_playhead_index_;
-  size_t current_download_pt_dri_;
 
   LRUCache<Chunk> frame_cache_ {};
 

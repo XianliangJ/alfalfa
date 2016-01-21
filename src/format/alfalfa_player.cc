@@ -332,8 +332,7 @@ AlfalfaPlayer::AlfalfaPlayer( const std::string & server_address )
     downloaded_frame_bytes_( 0 ),
     current_frame_seq_(),
     current_download_pt_index_( 0 ),
-    current_playhead_index_( 0 ),
-    current_download_pt_dri_( 0 )
+    current_playhead_index_( 0 )
 {}
 
 Decoder AlfalfaPlayer::get_decoder( const FrameInfo & frame )
@@ -519,9 +518,6 @@ AlfalfaPlayer::get_next_chunk()
   frame_cache_.put( frame.frame_id(), chunk );
   downloaded_frame_bytes_ += frame.length();
   current_download_pt_index_++;
-  if ( frame.shown() ) {
-    current_download_pt_dri_++;
-  }
 
   return chunk;
 }
@@ -578,13 +574,13 @@ AlfalfaPlayer::seek_track_at_dri( const size_t track_id, const size_t dri )
   double min_ssim = SIZE_MAX;
   int dri_index = (int) dri;
   for ( FrameInfo frame : frame_seq_tmp ) {
+    frame_seq.push_back( FrameInfoWrapper( frame, track_id, ( size_t ) dri_index ) );
     if ( frame.shown() ) {
       double ssim = video_.get_quality( dri_index, frame );
       if ( ssim < min_ssim )
         min_ssim = ssim;
       dri_index++;
     }
-    frame_seq.push_back( FrameInfoWrapper( frame, track_id ) );
   }
 
   return FrameSequence( frame_seq, min_ssim );
@@ -599,7 +595,8 @@ AlfalfaPlayer::seek_track_through_switch_at_dri( const size_t from_track_id, con
   // Switch can start at any index in the track
   for ( size_t switch_start_index = frame_index; switch_start_index < video_.get_track_size( from_track_id ); switch_start_index++ ) {
     // Get all switches that contain this frame
-    auto switch_infos = video_.get_switches_with_frame( video_.get_frame( from_track_id, switch_start_index ).frame_id );
+    auto switch_infos = video_.get_switches_with_frame(
+      video_.get_frame( from_track_id, switch_start_index ).frame_id );
     for ( auto switch_info : switch_infos ) {
       // First, verify that the switch starts from where we want it to start
       if ( switch_info.from_track_id != from_track_id or
@@ -621,7 +618,9 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
   vector<FrameInfoWrapper> switch_frame_seq_vec;
   for ( FrameInfo frame : video_.get_frames(
     switch_info.from_track_id, current_download_pt_index_, switch_info.from_frame_index ) ) {
-    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame, switch_info.from_track_id ) );
+    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame,
+                                                      switch_info.from_track_id,
+                                                      ( size_t ) dri_index ) );
     if ( frame.shown() ) {
       double ssim = video_.get_quality( dri_index, frame );
       if ( ssim < min_ssim )
@@ -632,7 +631,9 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
 
   for ( FrameInfo frame : switch_info.frames ) {
     // Frames in switches don't have track ids: we pick an invalid track id for now
-    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame, SIZE_MAX ) );
+    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame,
+                                                      SIZE_MAX,
+                                                      ( size_t ) dri_index ) );
     if ( frame.shown() ) {
       double ssim = video_.get_quality( dri_index, frame );
       if ( ssim < min_ssim )
@@ -643,7 +644,9 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
 
   for ( FrameInfo frame : video_.get_frames(
     switch_info.to_track_id, switch_info.to_frame_index, video_.get_track_size( switch_info.to_track_id ) ) ) {
-    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame, switch_info.to_track_id ) );
+    switch_frame_seq_vec.push_back( FrameInfoWrapper( frame,
+                                                      switch_info.to_track_id,
+                                                      ( size_t ) dri_index ) );
     if ( frame.shown() ) {
       double ssim = video_.get_quality( dri_index, frame );
       if ( ssim < min_ssim )
@@ -743,9 +746,8 @@ AlfalfaPlayer::set_current_frame_seq( const size_t dri, const size_t throughput_
     current_frame_seq_ = next_frames;
     current_download_pt_index_ = 0;
     current_playhead_index_ = 0;
-    current_download_pt_dri_ = dri;
   } else {
-    // download_pt_index, playhead_index and download_pt_dri are all unchanged
+    // download_pt_index and playhead_index are all unchanged
     size_t i;
     for ( i = current_download_pt_index_; i < current_frame_seq_.size(); i++ ) {
       current_frame_seq_.pop_back();
