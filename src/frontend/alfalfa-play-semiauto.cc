@@ -3,11 +3,26 @@
 
 #include <sysexits.h>
 
-#include "alfalfa_video_client.hh"
+#include "alfalfa_player.hh"
 #include "display.hh"
 #include "frame_fetcher.hh"
 
 using namespace std;
+
+const size_t THROUGHPUT_ESTIMATE = 1000000;
+const size_t SWITCHING_DECISION_FREQUENCY = 100;
+
+size_t get_num_dris( const AlfalfaVideoClient & video )
+{
+  size_t num_dris = 0;
+  // All valid videos must have a track id of 0
+  for ( const auto & frame : video.get_frames( 0, 0, video.get_track_size( 0 ) ) ) {
+    if ( frame.shown() ) {
+      num_dris++;
+    }
+  }
+  return num_dris;
+}
 
 int main( const int argc, char const *argv[] )
 {
@@ -16,36 +31,23 @@ int main( const int argc, char const *argv[] )
     return EX_USAGE;
   }
 
-  const AlfalfaVideoClient video { argv[ 1 ] };
-  Decoder decoder( video.get_video_width(), video.get_video_height() );
-  VideoDisplay display { decoder.example_raster() };
+  AlfalfaVideoClient video { argv[ 1 ] };
+  AlfalfaPlayer player { argv[ 1 ] };
+  VideoDisplay display { player.example_raster() };
 
   FrameFetcher fetcher { argv[ 2 ] };
-  
-  /* print out the available tracks in the video */
-  const vector<size_t> track_ids = video.get_track_ids();
 
-  cout << "track_ids:";
-  for ( const auto & id : track_ids ) {
-    cout << " " << id;
-  }
-  cout << "\n";
+  size_t dri = 0;  // Start off with the first displayed raster
+  size_t num_dris = get_num_dris( video );
 
-  /* play the first track found */
-  if ( track_ids.empty() ) {
-    throw runtime_error( "no tracks to play" );
-  }
-  
-  const size_t track_to_play = track_ids.front();
-  const size_t track_size = video.get_track_size( track_to_play );
-  const vector<FrameInfo> frames = video.get_frames( track_to_play, 0, track_size );
-
-  for ( const auto & frame : frames ) {
-    const string coded_frame = fetcher.get_chunk( frame );
-    const Optional<RasterHandle> raster = decoder.parse_and_decode_frame( coded_frame );
-    if ( raster.initialized() ) {
-      display.draw( raster.get() );
+  while ( dri < num_dris ) {
+    if ( dri % SWITCHING_DECISION_FREQUENCY == 0 ) {
+      player.set_current_frame_seq( dri, THROUGHPUT_ESTIMATE, false );
     }
+
+    RasterHandle raster = player.get_raster_sequential( dri );
+    display.draw( raster );
+    dri++;
   }
   
   return EXIT_SUCCESS;

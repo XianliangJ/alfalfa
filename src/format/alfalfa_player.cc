@@ -500,6 +500,27 @@ Optional<RasterHandle> AlfalfaPlayer::get_raster( const size_t output_hash,
   }
 }
 
+RasterHandle
+AlfalfaPlayer::get_raster_sequential( const size_t dri )
+{
+  FrameInfoWrapper frame_info_wrapper =
+    current_frame_seq_.at( current_playhead_index_ );
+  if ( frame_info_wrapper.dri > dri )
+    throw runtime_error( "Invalid dri requested in sequential play" );
+  while ( frame_info_wrapper.dri <= dri && not frame_info_wrapper.frame_info.shown() ) {
+    Decoder decoder = get_decoder( frame_info_wrapper.frame_info );
+    pair<bool, RasterHandle> output = decoder.get_frame_output( web_.get_chunk( frame_info_wrapper.frame_info ) );
+    cache_.put( decoder );
+    cache_.raster_cache().put( output.second.hash(), output.second );
+    frame_info_wrapper = current_frame_seq_.at( ++current_playhead_index_ );
+  }
+  Decoder decoder = get_decoder( frame_info_wrapper.frame_info );
+  pair<bool, RasterHandle> output = decoder.get_frame_output( web_.get_chunk( frame_info_wrapper.frame_info ) );
+  cache_.put( decoder );
+  cache_.raster_cache().put( output.second.hash(), output.second );
+  return output.second;
+}
+
 const VP8Raster & AlfalfaPlayer::example_raster()
 {
   Decoder temp( video_.get_video_width(), video_.get_video_height() );

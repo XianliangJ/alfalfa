@@ -225,6 +225,7 @@ public:
 
   Optional<RasterHandle> get_raster( const size_t output_hash,
                                      PathType path_type = MINIMUM_PATH, bool verbose = false );
+  RasterHandle get_raster_sequential( const size_t dri );
 
   const VP8Raster & example_raster();
 
