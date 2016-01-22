@@ -332,13 +332,15 @@ AlfalfaPlayer::AlfalfaPlayer( const std::string & server_address )
     downloaded_frame_bytes_( 0 ),
     current_frame_seq_(),
     current_download_pt_index_( 0 ),
-    current_playhead_index_( 0 )
+    current_playhead_index_( 0 ),
+    video_width_( video_.get_video_width() ),
+    video_height_( video_.get_video_height() )
 {}
 
 Decoder AlfalfaPlayer::get_decoder( const FrameInfo & frame )
 {
-  References refs( video_.get_video_width(), video_.get_video_height() );
-  DecoderState state( video_.get_video_width(), video_.get_video_height() );
+  References refs( video_width_, video_height_ );
+  DecoderState state( video_width_, video_height_ );
 
   if ( frame.source_hash().last_hash.initialized() ) {
     refs.last = cache_.raster_cache().get( frame.source_hash().last_hash.get() );
@@ -363,8 +365,8 @@ Decoder AlfalfaPlayer::get_decoder( const FrameInfo & frame )
 AlfalfaPlayer::FrameDependency AlfalfaPlayer::follow_track_path( TrackPath path,
                                                                   FrameDependency dependencies )
 {
-  References refs( video_.get_video_width(), video_.get_video_height() );
-  DecoderState state( video_.get_video_width(), video_.get_video_height() );
+  References refs( video_width_, video_height_ );
+  DecoderState state( video_width_, video_height_ );
 
   size_t from_frame_index = path.start_index;
   size_t to_frame_index = ( from_frame_index + MAX_NUM_FRAMES ) >= path.end_index ?
@@ -393,8 +395,8 @@ AlfalfaPlayer::FrameDependency AlfalfaPlayer::follow_track_path( TrackPath path,
 AlfalfaPlayer::FrameDependency AlfalfaPlayer::follow_switch_path( SwitchPath path,
                                                                   FrameDependency dependencies )
 {
-  References refs( video_.get_video_width(), video_.get_video_height() );
-  DecoderState state( video_.get_video_width(), video_.get_video_height() );
+  References refs( video_width_, video_height_ );
+  DecoderState state( video_width_, video_height_ );
 
   auto frames = video_.get_frames( path.from_track_id, path.to_track_id,
     path.from_frame_index, path.switch_start_index, path.switch_end_index );
@@ -504,15 +506,16 @@ RasterHandle
 AlfalfaPlayer::get_raster_sequential( const size_t dri )
 {
   FrameInfoWrapper frame_info_wrapper =
-    current_frame_seq_.at( current_playhead_index_ );
-  if ( frame_info_wrapper.dri > dri )
+    current_frame_seq_.at( current_playhead_index_++ );
+  if ( frame_info_wrapper.dri > dri ) {
     throw runtime_error( "Invalid dri requested in sequential play" );
-  while ( frame_info_wrapper.dri <= dri && not frame_info_wrapper.frame_info.shown() ) {
+  }
+  while ( frame_info_wrapper.dri <= dri and (not frame_info_wrapper.frame_info.shown() ) ) {
     Decoder decoder = get_decoder( frame_info_wrapper.frame_info );
     pair<bool, RasterHandle> output = decoder.get_frame_output( web_.get_chunk( frame_info_wrapper.frame_info ) );
     cache_.put( decoder );
     cache_.raster_cache().put( output.second.hash(), output.second );
-    frame_info_wrapper = current_frame_seq_.at( ++current_playhead_index_ );
+    frame_info_wrapper = current_frame_seq_.at( current_playhead_index_++ );
   }
   Decoder decoder = get_decoder( frame_info_wrapper.frame_info );
   pair<bool, RasterHandle> output = decoder.get_frame_output( web_.get_chunk( frame_info_wrapper.frame_info ) );
@@ -523,15 +526,17 @@ AlfalfaPlayer::get_raster_sequential( const size_t dri )
 
 const VP8Raster & AlfalfaPlayer::example_raster()
 {
-  Decoder temp( video_.get_video_width(), video_.get_video_height() );
+  Decoder temp( video_width_, video_height_ );
   return temp.example_raster();
 }
 
-Chunk
+Optional<Chunk>
 AlfalfaPlayer::get_next_chunk()
 {
-  if ( current_download_pt_index_ >= current_frame_seq_.size() )
-    throw runtime_error( "No chunks remaining to get" );
+  if ( current_download_pt_index_ >= current_frame_seq_.size() ) {
+    // No chunks remaining to get
+    return {};
+  }
 
   FrameInfo frame = current_frame_seq_.at( current_download_pt_index_ ).frame_info;
   Chunk chunk = web_.get_chunk( frame );
@@ -540,7 +545,7 @@ AlfalfaPlayer::get_next_chunk()
   downloaded_frame_bytes_ += frame.length();
   current_download_pt_index_++;
 
-  return chunk;
+  return make_optional<Chunk>( true, chunk );
 }
 
 bool
@@ -763,6 +768,7 @@ AlfalfaPlayer::set_current_frame_seq( const size_t dri, const size_t throughput_
   }
 
   vector<FrameInfoWrapper> next_frames = play_options.at( optimal_frame_sequence_index ).frame_seq;
+
   if ( random_seek ) {
     current_frame_seq_ = next_frames;
     current_download_pt_index_ = 0;
@@ -770,7 +776,8 @@ AlfalfaPlayer::set_current_frame_seq( const size_t dri, const size_t throughput_
   } else {
     // download_pt_index and playhead_index are all unchanged
     size_t i;
-    for ( i = current_download_pt_index_; i < current_frame_seq_.size(); i++ ) {
+    size_t current_frame_seq_size = current_frame_seq_.size();
+    for ( i = current_download_pt_index_; i < current_frame_seq_size; i++ ) {
       current_frame_seq_.pop_back();
     }
     for ( FrameInfoWrapper frame_wrapper : next_frames ) {

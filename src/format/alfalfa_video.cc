@@ -280,6 +280,14 @@ AlfalfaVideo::get_track_ids() const
   return track_db_.get_track_ids();
 }
 
+unordered_set<size_t>
+AlfalfaVideo::get_connected_track_ids( const size_t from_track_id ) const
+{
+  if ( connected_track_ids_.count( from_track_id ) == 0 )
+    return unordered_set<size_t>();
+  return connected_track_ids_.at( from_track_id );
+}
+
 pair<TrackDBIterator, TrackDBIterator>
 AlfalfaVideo::get_frames( const size_t track_id ) const
 {

@@ -110,6 +110,8 @@ private:
      current index of the play head. */
   size_t current_download_pt_index_;
   size_t current_playhead_index_;
+  size_t video_width_;
+  size_t video_height_;
 
   LRUCache<Chunk> frame_cache_ {};
 
@@ -231,7 +233,7 @@ public:
 
   /* Move current pointer position up by 1, and retrieve chunk from server.
      Also store chunk in local client-side cache, evicting element if needed. */
-  Chunk get_next_chunk();
+  Optional<Chunk> get_next_chunk();
 
   // Get the next sequence of frames that should be played, given the provided
   // displayed_raster_index and throughput estimate.

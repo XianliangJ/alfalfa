@@ -139,7 +139,7 @@ public:
   std::pair<std::unordered_set<size_t>::const_iterator, std::unordered_set<size_t>::const_iterator>
   get_track_ids() const;
 
-  std::unordered_set<size_t> get_connected_track_ids( const size_t from_track_id ) const { return connected_track_ids_.at( from_track_id ); }
+  std::unordered_set<size_t> get_connected_track_ids( const size_t from_track_id ) const;
 
   std::pair<TrackDBCollectionByFrameIdIndex::const_iterator, TrackDBCollectionByFrameIdIndex::const_iterator>
   get_track_data_by_frame_id( const size_t frame_id ) const { return track_db_.search_by_frame_id( frame_id ); }

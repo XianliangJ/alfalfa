@@ -40,11 +40,23 @@ int main( const int argc, char const *argv[] )
   size_t dri = 0;  // Start off with the first displayed raster
   size_t num_dris = get_num_dris( video );
 
+  bool done_with_download = false;
+
   while ( dri < num_dris ) {
     if ( dri % SWITCHING_DECISION_FREQUENCY == 0 ) {
       player.set_current_frame_seq( dri, THROUGHPUT_ESTIMATE, false );
     }
 
+    size_t i;
+    if ( not done_with_download ) {
+      for ( i = 0; i < 5; i++ ) {
+        Optional<Chunk> chunk = player.get_next_chunk();
+        if ( not chunk.initialized() ) {
+          done_with_download = true;
+          break;
+        }
+      }
+    }
     RasterHandle raster = player.get_raster_sequential( dri );
     display.draw( raster );
     dri++;
