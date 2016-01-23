@@ -115,6 +115,7 @@ private:
   size_t video_height_;
 
   std::unordered_map<size_t, std::vector<FrameInfo>> track_frames_ {};
+  std::unordered_map<size_t, std::unordered_map<size_t, double>> quality_data_ {};
 
   LRUCache<Chunk> frame_cache_ {};
 

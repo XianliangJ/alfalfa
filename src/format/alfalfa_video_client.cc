@@ -62,6 +62,17 @@ AlfalfaVideoClient::get_quality( const int dri, const FrameInfo & frame_info ) c
   return Double( response ).d;
 }
 
+vector<QualityDataDRI>
+AlfalfaVideoClient::get_all_quality_data_by_dri() const
+{
+  ClientContext context;
+  AlfalfaProtobufs::Empty empty;
+  AlfalfaProtobufs::QualityDataDRIIterator response;
+  RPC( "get_all_quality_data_by_dri",
+    stub_->get_all_quality_data_by_dri( &context, empty, &response ) );
+  return QualityDataDRIIterator( response ).quality_data_dri_items;
+}
+
 vector<FrameInfo>
 AlfalfaVideoClient::get_frames( const size_t track_id, const size_t start_frame_index,
                                 const size_t end_frame_index ) const

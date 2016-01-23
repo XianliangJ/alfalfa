@@ -35,6 +35,9 @@ public:
   /* Get the quality of the frame associated with the passed-in frame_ingo, given
      the corresponding displayed_raster_index. */
   double get_quality( const int displayed_raster_index, const FrameInfo & frame_info ) const;
+  /* Get all quality data in the form of a map of approximate_raster to
+     dri to quality_score. */
+  std::vector<QualityDataDRI> get_all_quality_data_by_dri() const;
 
   /* Gets frames in the given track, between the provided indices --
      here, start_frame_index is included and end_frame_index is

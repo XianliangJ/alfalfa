@@ -29,6 +29,10 @@ public:
                             const AlfalfaProtobufs::QualityInput * quality_input,
                             AlfalfaProtobufs::Double * quality ) override;
 
+  grpc::Status get_all_quality_data_by_dri( grpc::ServerContext * context,
+                                            const AlfalfaProtobufs::Empty * empty,
+                                            AlfalfaProtobufs::QualityDataDRIIterator * result ) override;
+
   /* Get size of a track. */
   grpc::Status get_track_size( grpc::ServerContext * context,
                                const AlfalfaProtobufs::SizeT * track_id,

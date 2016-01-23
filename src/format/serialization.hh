@@ -139,6 +139,29 @@ struct QualityDataIterator
   AlfalfaProtobufs::QualityDataIterator to_protobuf() const;
 };
 
+struct QualityDataDRI
+{
+  size_t original_raster_dri;
+  size_t approximate_raster;
+  double quality;
+
+  QualityDataDRI( const size_t original_raster_dri, const size_t approximate_raster,
+                  const double quality );
+  QualityDataDRI( const AlfalfaProtobufs::QualityDataDRI & message );
+
+  AlfalfaProtobufs::QualityDataDRI to_protobuf() const;
+};
+
+struct QualityDataDRIIterator
+{
+  std::vector<QualityDataDRI> quality_data_dri_items;
+
+  QualityDataDRIIterator();
+  QualityDataDRIIterator( const AlfalfaProtobufs::QualityDataDRIIterator & message );
+
+  AlfalfaProtobufs::QualityDataDRIIterator to_protobuf() const;
+};
+
 struct TrackDataIterator
 {
   std::vector<TrackData> track_data_items;

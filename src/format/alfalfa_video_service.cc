@@ -34,6 +34,27 @@ Status AlfalfaVideoServiceImpl::get_quality( ServerContext *,
   return Status::OK;
 }
 
+Status AlfalfaVideoServiceImpl::get_all_quality_data_by_dri( ServerContext *,
+                                                             const AlfalfaProtobufs::Empty *,
+                                                             AlfalfaProtobufs::QualityDataDRIIterator * response )
+{
+  Log( "get_all_quality_data_by_dri" );
+
+  auto quality_data_map = video_.get_all_quality_data_by_dri();
+  QualityDataDRIIterator all_quality_data_by_dri;
+  for ( auto & quality_data_by_approx_raster : quality_data_map ) {
+    for ( auto & quality_data : quality_data_by_approx_raster.second ) {
+      all_quality_data_by_dri.quality_data_dri_items.push_back( QualityDataDRI( quality_data.first,
+                                                                            quality_data_by_approx_raster.first,
+                                                                            quality_data.second 
+                                                                          ) );
+    }
+  }
+
+  response->CopyFrom( all_quality_data_by_dri.to_protobuf() );
+  return Status::OK;
+}
+
 Status AlfalfaVideoServiceImpl::get_track_size( ServerContext *,
                                                 const AlfalfaProtobufs::SizeT * track_id,
                                                 AlfalfaProtobufs::SizeT * response )

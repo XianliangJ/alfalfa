@@ -354,6 +354,57 @@ QualityDataIterator::to_protobuf() const
   return message;
 }
 
+QualityDataDRI::QualityDataDRI( const size_t original_raster_dri, const size_t approximate_raster,
+                                const double quality )
+  : original_raster_dri( original_raster_dri ),
+    approximate_raster( approximate_raster ),
+    quality( quality )
+{}
+
+QualityDataDRI::QualityDataDRI( const AlfalfaProtobufs::QualityDataDRI & message )
+  : original_raster_dri( message.original_raster_dri() ),
+    approximate_raster( message.approximate_raster() ),
+    quality( message.quality() )
+{}
+
+AlfalfaProtobufs::QualityDataDRI
+QualityDataDRI::to_protobuf() const
+{
+  AlfalfaProtobufs::QualityDataDRI message;
+
+  message.set_original_raster_dri( original_raster_dri );
+  message.set_approximate_raster( approximate_raster );
+  message.set_quality( quality );
+
+  return message;
+}
+
+QualityDataDRIIterator::QualityDataDRIIterator()
+  : quality_data_dri_items()
+{}
+
+QualityDataDRIIterator::QualityDataDRIIterator( const AlfalfaProtobufs::QualityDataDRIIterator & message )
+  : quality_data_dri_items()
+{
+  int i;
+  for ( i = 0; i < message.quality_data_dri_size(); i++ ) {
+    quality_data_dri_items.push_back( QualityDataDRI( message.quality_data_dri( i ) ) );
+  }
+}
+
+AlfalfaProtobufs::QualityDataDRIIterator
+QualityDataDRIIterator::to_protobuf() const
+{
+  AlfalfaProtobufs::QualityDataDRIIterator message;
+
+  for ( QualityDataDRI quality_data_dri_item : quality_data_dri_items ) {
+    AlfalfaProtobufs::QualityDataDRI *qd = message.add_quality_data_dri();
+    *qd = quality_data_dri_item.to_protobuf();
+  }
+
+  return message;
+}
+
 TrackDataIterator::TrackDataIterator()
   : track_data_items()
 {}

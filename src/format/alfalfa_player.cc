@@ -341,6 +341,10 @@ AlfalfaPlayer::AlfalfaPlayer( const std::string & server_address )
   for ( size_t track_id : video_.get_track_ids() ) {
     track_frames_[ track_id ] = video_.get_frames( track_id, 0, video_.get_track_size( track_id ) );
   }
+
+  for ( QualityDataDRI quality_data : video_.get_all_quality_data_by_dri() ) {
+    quality_data_[ quality_data.approximate_raster ][ quality_data.original_raster_dri ] = quality_data.quality;
+  }
 }
 
 Decoder AlfalfaPlayer::get_decoder( const FrameInfo & frame )
@@ -605,11 +609,11 @@ AlfalfaPlayer::seek_track_at_dri( const size_t track_id, const size_t dri )
   vector<FrameInfoWrapper> frame_seq;
 
   double min_ssim = SIZE_MAX;
-  int dri_index = (int) dri;
+  size_t dri_index = dri;
   for ( FrameInfo frame : relavant_track_frames ) {
     frame_seq.push_back( FrameInfoWrapper( frame, track_id, ( size_t ) dri_index ) );
     if ( frame.shown() ) {
-      double ssim = video_.get_quality( dri_index, frame );
+      double ssim = quality_data_[ frame.target_hash().output_hash ][ dri_index ];
       if ( ssim < min_ssim )
         min_ssim = ssim;
       dri_index++;
@@ -648,7 +652,7 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
   vector<FrameInfo> cur_track_frames( cur_track.begin() + current_download_pt_index_,
     cur_track.begin() + switch_info.from_frame_index );
 
-  int dri_index = (int) dri;
+  size_t dri_index = dri;
   double min_ssim = SIZE_MAX;
   vector<FrameInfoWrapper> switch_frame_seq_vec;
   for ( FrameInfo frame : cur_track_frames ) {
@@ -656,7 +660,7 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
                                                       switch_info.from_track_id,
                                                       ( size_t ) dri_index ) );
     if ( frame.shown() ) {
-      double ssim = video_.get_quality( dri_index, frame );
+      double ssim = quality_data_[ frame.target_hash().output_hash ][ dri_index ];
       if ( ssim < min_ssim )
         min_ssim = ssim;
       dri_index++;
@@ -669,7 +673,7 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
                                                       SIZE_MAX,
                                                       ( size_t ) dri_index ) );
     if ( frame.shown() ) {
-      double ssim = video_.get_quality( dri_index, frame );
+      double ssim = quality_data_[ frame.target_hash().output_hash ][ dri_index ];
       if ( ssim < min_ssim )
         min_ssim = ssim;
       dri_index++;
@@ -685,7 +689,7 @@ AlfalfaPlayer::get_frame_seq( const SwitchInfo & switch_info, const size_t dri )
                                                       switch_info.to_track_id,
                                                       ( size_t ) dri_index ) );
     if ( frame.shown() ) {
-      double ssim = video_.get_quality( dri_index, frame );
+      double ssim = quality_data_[ frame.target_hash().output_hash ][ dri_index ];
       if ( ssim < min_ssim )
         min_ssim = ssim;
       dri_index++;

@@ -225,6 +225,7 @@ public:
   /* Get the quality of the frame associated with supplied frame_info, given
      the index of the corresponding original raster in the raster_list. */
   double get_quality( int raster_index, const FrameInfo & frame_info ) const;
+  std::unordered_map<size_t, std::unordered_map<size_t, double>> get_all_quality_data_by_dri() const;
 
   /* the Web server wants to redirect incoming requests to this file */
   const std::string & ivf_filename() const;

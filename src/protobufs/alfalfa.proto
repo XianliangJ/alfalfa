@@ -88,6 +88,16 @@ message QualityDataIterator {
   repeated QualityData quality_data = 1;
 }
 
+message QualityDataDRI {
+  required uint64 original_raster_dri = 1;
+  required uint64 approximate_raster = 2;
+  required double quality = 3;
+}
+
+message QualityDataDRIIterator {
+  repeated QualityDataDRI quality_data_dri = 1;
+}
+
 message TrackDataIterator {
   repeated TrackData track_data = 1;
 }
@@ -151,6 +161,7 @@ message Empty {
 service AlfalfaVideo {
   rpc get_url( Empty ) returns ( URL ) {}
   rpc get_quality( QualityInput ) returns ( Double ) {}
+  rpc get_all_quality_data_by_dri( Empty ) returns ( QualityDataDRIIterator ) {}
   rpc get_track_size( SizeT ) returns ( SizeT ) {}
   rpc get_frame_by_id( SizeT ) returns ( FrameInfo ) {}
   rpc get_frame_by_track_pos( TrackPosition ) returns ( TrackData ) {}

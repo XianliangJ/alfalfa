@@ -441,6 +441,23 @@ double AlfalfaVideo::get_quality( int raster_index, const FrameInfo & frame_info
     original_raster, approximate_raster ).quality;
 }
 
+unordered_map<size_t, unordered_map<size_t, double>>
+AlfalfaVideo::get_all_quality_data_by_dri() const
+{
+  unordered_map<size_t, unordered_map<size_t, double>> quality_data_map;
+  for ( auto track_id = get_track_ids(); track_id.first != track_id.second; track_id.first++ ) {
+    size_t dri = 0;
+    for ( auto track = get_frames( *track_id.first ); track.first != track.second; track.first++ ) {
+      FrameInfo frame = *track.first;
+      if ( frame.shown() ) {
+        quality_data_map[ frame.target_hash().output_hash ][ dri ] = get_quality( dri, frame );
+        dri++;
+      }
+    }
+  }
+  return quality_data_map;
+}
+
 /* WritableAlfalfaVideo */
 
 WritableAlfalfaVideo::WritableAlfalfaVideo( const string & directory_name,
