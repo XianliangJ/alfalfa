@@ -201,6 +201,10 @@ public:
   std::vector<std::pair<SwitchDBIterator, SwitchDBIterator> >
   get_switches_with_frame( const size_t frame_id ) const;
 
+  /* Get all switches starting at frame in the provided window. */
+  std::vector< std::pair<SwitchDBIterator, SwitchDBIterator> >
+  get_all_switches_in_window( const size_t track_id, const size_t from_frame_index, const size_t to_frame_index ) const;
+
   /* Gets an iterator over all frames associated with a track, starting at
      start_frame_index and ending at end_frame_index (both indices here include
      unshown frames) -- frame at end_frame_index is NOT included. */

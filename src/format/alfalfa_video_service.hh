@@ -100,6 +100,10 @@ public:
                                         const AlfalfaProtobufs::SizeT * frame_id,
                                         AlfalfaProtobufs::Switches * switches ) override;
 
+  grpc::Status get_all_switches_in_window( grpc::ServerContext * context,
+                                           const AlfalfaProtobufs::SwitchWindowArgs * args,
+                                           AlfalfaProtobufs::Switches * switches ) override;
+
   /* Getters for width and height. */
   grpc::Status get_video_width( grpc::ServerContext * context,
                                 const AlfalfaProtobufs::Empty * empty,

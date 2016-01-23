@@ -220,6 +220,18 @@ struct TrackRangeArgs
   AlfalfaProtobufs::TrackRangeArgs to_protobuf() const;
 };
 
+struct SwitchWindowArgs
+{
+  size_t track_id;
+  size_t start_frame_index;
+  size_t end_frame_index;
+
+  SwitchWindowArgs( const size_t track_id, const size_t start_frame_index, const size_t end_frame_index );
+  SwitchWindowArgs( const AlfalfaProtobufs::SwitchWindowArgs & message );
+
+  AlfalfaProtobufs::SwitchWindowArgs to_protobuf() const;
+};
+
 struct SwitchRangeArgs
 {
   size_t from_track_id;

@@ -547,6 +547,31 @@ TrackRangeArgs::to_protobuf() const
   return message;
 }
 
+SwitchWindowArgs::SwitchWindowArgs( const size_t track_id, const size_t start_frame_index,
+                                    const size_t end_frame_index )
+  : track_id( track_id ),
+    start_frame_index( start_frame_index ),
+    end_frame_index( end_frame_index )
+{}
+
+SwitchWindowArgs::SwitchWindowArgs( const AlfalfaProtobufs::SwitchWindowArgs & message )
+  : track_id( message.track_id() ),
+    start_frame_index( message.start_frame_index() ),
+    end_frame_index( message.end_frame_index() )
+{}
+
+AlfalfaProtobufs::SwitchWindowArgs
+SwitchWindowArgs::to_protobuf() const
+{
+  AlfalfaProtobufs::SwitchWindowArgs message;
+
+  message.set_track_id( track_id );
+  message.set_start_frame_index( start_frame_index );
+  message.set_end_frame_index( end_frame_index );
+
+  return message;
+}
+
 SwitchRangeArgs::SwitchRangeArgs( const size_t from_track_id, const size_t to_track_id,
                                   const size_t from_frame_index, const size_t switch_start_index,
                                   const size_t switch_end_index )

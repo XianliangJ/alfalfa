@@ -200,6 +200,22 @@ AlfalfaVideoClient::get_switches_with_frame( const size_t frame_id ) const
   return Switches( response ).switches;
 }
 
+vector<SwitchInfo>
+AlfalfaVideoClient::get_all_switches_in_window( const size_t track_id,
+                                                const size_t start_frame_index,
+                                                const size_t end_frame_index ) const
+{
+  ClientContext context;
+  AlfalfaProtobufs::SwitchWindowArgs args_serialized = SwitchWindowArgs( track_id,
+                                                                         start_frame_index,
+                                                                         end_frame_index
+                                                                       ).to_protobuf();
+  AlfalfaProtobufs::Switches response;
+  RPC( "get_all_switches_in_window",
+    stub_->get_all_switches_in_window( &context, args_serialized, &response ) );
+  return Switches( response ).switches;
+}
+
 size_t
 AlfalfaVideoClient::get_video_width() const
 {

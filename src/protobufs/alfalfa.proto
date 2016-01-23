@@ -126,6 +126,12 @@ message TrackRangeArgs {
   required uint64 end_frame_index = 3;
 }
 
+message SwitchWindowArgs {
+  required uint64 track_id = 1;
+  required uint64 start_frame_index = 2;
+  required uint64 end_frame_index = 3;
+}
+
 message SwitchRangeArgs {
   required uint64 from_track_id = 1;
   required uint64 to_track_id = 2;
@@ -160,6 +166,7 @@ service AlfalfaVideo {
   rpc get_track_data_by_frame_id( SizeT ) returns ( TrackDataIterator ) {}
   rpc get_frame_index_by_displayed_raster_index( TrackPositionDisplayedRasterIndex ) returns ( SizeT ) {}
   rpc get_switches_with_frame( SizeT ) returns ( Switches ) {}
+  rpc get_all_switches_in_window( SwitchWindowArgs ) returns ( Switches ) {}
   rpc get_video_width( Empty ) returns ( SizeT ) {}
   rpc get_video_height( Empty ) returns ( SizeT ) {}
 }

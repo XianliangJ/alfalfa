@@ -7,6 +7,9 @@ using namespace std;
 // sent over the network aren't too large.
 const size_t MAX_NUM_FRAMES = 1000;
 
+// Window size to determine how far out we need to look for switches
+const size_t WINDOW_SIZE = 24 * 60;
+
 template<class ObjectType>
 void LRUCache<ObjectType>::put( const size_t key, const ObjectType & obj )
 {
@@ -619,25 +622,23 @@ AlfalfaPlayer::seek_track_at_dri( const size_t track_id, const size_t dri )
 vector<SwitchInfo>
 AlfalfaPlayer::seek_track_through_switch_at_dri( const size_t from_track_id, const size_t dri, const size_t to_track_id )
 {
-  vector<SwitchInfo> switch_infos;
+  vector<SwitchInfo> all_switch_infos;
   size_t frame_index = video_.get_frame_index_by_displayed_raster_index( from_track_id, dri );
 
   // Switch can start at any index in the track
-  for ( size_t switch_start_index = frame_index; switch_start_index < video_.get_track_size( from_track_id ); switch_start_index++ ) {
-    // Get all switches that contain this frame
-    auto switch_infos = video_.get_switches_with_frame(
-      video_.get_frame( from_track_id, switch_start_index ).frame_id );
-    for ( auto switch_info : switch_infos ) {
-      // First, verify that the switch starts from where we want it to start
-      if ( switch_info.from_track_id != from_track_id or
-           switch_info.to_track_id != to_track_id or
-           switch_info.from_frame_index != switch_start_index )
-        continue;
+  auto switch_infos = video_.get_all_switches_in_window(
+    from_track_id, frame_index, min( frame_index + WINDOW_SIZE, track_frames_[ from_track_id].size() ) );
+  for ( auto switch_info : switch_infos ) {
+    // First, verify that the switch starts from where we want it to start
+    if ( switch_info.from_track_id != from_track_id or
+         switch_info.to_track_id != to_track_id or
+         switch_info.from_frame_index < frame_index or
+         switch_info.from_frame_index > ( frame_index + WINDOW_SIZE ) )
+      continue;
 
-      switch_infos.push_back( switch_info );
-    }
+    all_switch_infos.push_back( switch_info );
   }
-  return switch_infos;
+  return all_switch_infos;
 }
 
 FrameSequence

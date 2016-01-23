@@ -269,10 +269,37 @@ Status AlfalfaVideoServiceImpl::get_switches_with_frame( ServerContext *,
                                                          const AlfalfaProtobufs::SizeT * frame_id,
                                                          AlfalfaProtobufs::Switches * response )
 {
-  Log( "get_switches_ending_with_frame" );
+  Log( "get_switches_with_frame" );
 
   SizeT frame_id_deserialized( *frame_id );
   auto switches = video_.get_switches_with_frame( frame_id_deserialized.sizet );
+  Switches sw;
+  for ( auto frames : switches ) {
+    SwitchInfo switch_info( frames.first.from_track_id(), frames.first.to_track_id(),
+                            frames.first.from_frame_index(), frames.first.to_frame_index(),
+                            frames.first.switch_frame_index(),
+                            frames.second.switch_frame_index() );
+    while ( frames.first != frames.second ) {
+      switch_info.frames.push_back( *frames.first );
+      frames.first--;
+    }
+    sw.switches.push_back( switch_info );
+  }
+
+  response->CopyFrom( sw.to_protobuf() );
+  return Status::OK;
+}
+
+Status AlfalfaVideoServiceImpl::get_all_switches_in_window( ServerContext *,
+                                                            const AlfalfaProtobufs::SwitchWindowArgs * args,
+                                                            AlfalfaProtobufs::Switches * response )
+{
+  Log( "get_all_switches_in_window" );
+
+  SwitchWindowArgs args_deserialized( *args );
+  auto switches = video_.get_all_switches_in_window( args_deserialized.track_id,
+                                                     args_deserialized.start_frame_index,
+                                                     args_deserialized.end_frame_index );
   Switches sw;
   for ( auto frames : switches ) {
     SwitchInfo switch_info( frames.first.from_track_id(), frames.first.to_track_id(),

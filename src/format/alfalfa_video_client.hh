@@ -84,6 +84,10 @@ public:
   std::vector<SwitchInfo>
   get_switches_with_frame( const size_t frame_id ) const;
 
+  std::vector<SwitchInfo>
+  get_all_switches_in_window( const size_t track_id, const size_t start_frame_index,
+                              const size_t end_frame_index ) const;
+
   /* Getters for width and height. */
   size_t get_video_width() const;
   size_t get_video_height() const;
