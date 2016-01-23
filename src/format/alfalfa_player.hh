@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 #include <boost/format.hpp>
 
@@ -105,13 +106,15 @@ private:
   size_t downloaded_frame_bytes_;
   /* Sequence of frames currently being played by the player -- could be frames
      on a track, frames on a switch, or both. */
-  std::vector<FrameInfoWrapper> current_frame_seq_;
+  std::vector<FrameInfoWrapper> current_frame_seq_ {};
   /* Index of next frame in current_frame_seq_ that needs to be downloaded, along with
      current index of the play head. */
   size_t current_download_pt_index_;
   size_t current_playhead_index_;
   size_t video_width_;
   size_t video_height_;
+
+  std::unordered_map<size_t, std::vector<FrameInfo>> track_frames_ {};
 
   LRUCache<Chunk> frame_cache_ {};
 
