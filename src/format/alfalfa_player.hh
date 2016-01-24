@@ -205,7 +205,17 @@ private:
   Optional<RasterHandle> get_raster_switch_path( const size_t output_hash );
   Optional<RasterHandle> get_raster_track_path( const size_t output_hash );
 
-  FrameSequence get_frame_seq( const SwitchInfo & switch_info, const size_t dri );
+  /* Get frame sequence associated with provided switch. */
+  FrameSequence get_frame_seq( const SwitchInfo & switch_info );
+  /* Get frame sequence associated with current track from the current download point. */
+  FrameSequence get_frame_seq();
+  /* Get frame sequence by seeking to provided track_id at dri. */
+  FrameSequence get_frame_seq( const size_t track_id, const size_t dri );
+  /* Get all frame sequences that traverse the given pair of track_ids. Switch starting
+     point is in a window that starts at dri. */
+  std::vector<FrameSequence> get_frame_seqs_with_switch( const size_t from_track_id,
+                                                         const size_t dri,
+                                                         const size_t to_track_id );
 
   /* Determine if it's possible to play the provided sequence of frames, given the
      provided throughput estimate. */
@@ -216,16 +226,11 @@ private:
   // the provided throughput estimate. Only feasible frame sequences are returned.
   // Each FrameSequence object will also eventually contain enough metadata to compute
   // the QoS metric for the frame sequence.
-  std::vector<FrameSequence> get_sequential_play_options( const size_t dri,
-                                                          const size_t throughput_estimate );
+  std::vector<FrameSequence> get_sequential_play_options( const size_t throughput_estimate );
   // Get all sequences of frames possible while random seeking. Throughput estimate
   // is not considered here, since all options will involve some amount of buffering.
   std::vector<FrameSequence> get_random_seek_play_options( const size_t dri );
 
-  FrameSequence seek_track_at_dri( const size_t track_id, const size_t dri );
-  std::vector<SwitchInfo> seek_track_through_switch_at_dri( const size_t from_track_id,
-                                                            const size_t dri,
-                                                            const size_t to_track_id );
 public:
   AlfalfaPlayer( const std::string & server_address );
 
@@ -241,7 +246,7 @@ public:
 
   // Get the next sequence of frames that should be played, given the provided
   // displayed_raster_index and throughput estimate.
-  void set_current_frame_seq( const size_t dri, const size_t throughput_estimate, bool random_seek );
+  void set_current_frame_seq( const Optional<size_t> dri_to_seek, const size_t throughput_estimate );
 
   size_t cache_size() { return cache_.size(); }
   void clear_cache();

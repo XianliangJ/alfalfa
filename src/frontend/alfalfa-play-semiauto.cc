@@ -44,7 +44,7 @@ int main( const int argc, char const *argv[] )
 
   while ( dri < num_dris ) {
     if ( dri % SWITCHING_DECISION_FREQUENCY == 0 ) {
-      player.set_current_frame_seq( dri, THROUGHPUT_ESTIMATE, false );
+      player.set_current_frame_seq( make_optional<size_t>( false, 0 ), THROUGHPUT_ESTIMATE );
     }
 
     size_t i;
