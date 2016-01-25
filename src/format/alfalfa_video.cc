@@ -386,18 +386,25 @@ AlfalfaVideo::get_all_switches_in_window( const size_t track_id,
 {
   vector<pair<SwitchDBIterator, SwitchDBIterator> > results;
 
-  for ( auto track_frames = get_track_range( track_id, from_frame_index, to_frame_index );
-        track_frames.first != track_frames.second; track_frames.first++ ) {
-    auto switches = switch_db_.get_switches_by_frame_id( track_frames.first->frame_id() );
+  size_t frame_index;
+  for ( frame_index = from_frame_index; frame_index < to_frame_index; frame_index++ ) {
+    auto switches = switch_db_.get_switches_by_from_track_id_and_frame_index( track_id,
+                                                                              frame_index );
     for ( auto sw = switches.first; sw != switches.second; sw++ ) {
+      if ( sw->from_track_id != track_id )
+        continue;
+
       SwitchDBIterator begin(
         sw->from_track_id, sw->to_track_id, sw->from_frame_index,
-        sw->switch_frame_index, switch_db_, frame_db_
+        0, switch_db_, frame_db_
       );
 
       SwitchDBIterator end(
         sw->from_track_id, sw->to_track_id, sw->from_frame_index,
-        -1, switch_db_, frame_db_
+        switch_db_.get_end_switch_frame_index( sw->from_track_id,
+                                               sw->to_track_id,
+                                               sw->from_frame_index ),
+        switch_db_, frame_db_
       );
 
       results.push_back( make_pair( begin, end ) );

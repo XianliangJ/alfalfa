@@ -277,6 +277,7 @@ class TrackDBIterator : std::iterator<std::forward_iterator_tag, FrameInfo>
 
 struct SwitchDBSequencedTag;
 struct SwitchDBHashedByTrackIdsAndFrameIndexTag;
+struct SwitchDBHashedByFromTrackIdAndFrameIndexTag;
 struct SwitchDBOrderedByTrackIdsAndFrameIndicesTag;
 struct SwitchDBHashedByFrameIdsTag;
 
@@ -294,6 +295,17 @@ typedef multi_index_container
         member<SwitchData, size_t, &SwitchData::from_track_id>,
         member<SwitchData, size_t, &SwitchData::to_track_id>,
         member<SwitchData, size_t, &SwitchData::from_frame_index>
+      >
+    >,
+    hashed_non_unique
+    <
+      tag<SwitchDBHashedByFromTrackIdAndFrameIndexTag>,
+      composite_key
+      <
+        SwitchData,
+        member<SwitchData, size_t, &SwitchData::from_track_id>,
+        member<SwitchData, size_t, &SwitchData::from_frame_index>,
+        member<SwitchData, size_t, &SwitchData::switch_frame_index>
       >
     >,
     ordered_non_unique
@@ -322,6 +334,8 @@ typedef multi_index_container
 
 typedef SwitchDBCollection::index<SwitchDBHashedByTrackIdsAndFrameIndexTag>::type
 SwitchDBCollectionHashedByTrackIdsAndFrameIndex;
+typedef SwitchDBCollection::index<SwitchDBHashedByFromTrackIdAndFrameIndexTag>::type
+SwitchDBCollectionHashedByFromTrackIdAndFrameIndex;
 typedef SwitchDBCollection::index<SwitchDBOrderedByTrackIdsAndFrameIndicesTag>::type
 SwitchDBCollectionOrderedByTrackIdsAndFrameIndices;
 typedef SwitchDBCollection::index<SwitchDBHashedByFrameIdsTag>::type
@@ -353,6 +367,9 @@ public:
   std::pair<SwtichDBCollectionHashedByFrameIds::const_iterator,
   SwtichDBCollectionHashedByFrameIds::const_iterator>
   get_switches_by_frame_id( const size_t frame_id ) const;
+  std::pair<SwitchDBCollectionHashedByFromTrackIdAndFrameIndex::const_iterator,
+  SwitchDBCollectionHashedByFromTrackIdAndFrameIndex::const_iterator>
+  get_switches_by_from_track_id_and_frame_index( const size_t from_track_id, const size_t from_frame_index ) const;
 };
 
 /*

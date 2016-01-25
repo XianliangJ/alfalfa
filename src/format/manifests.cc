@@ -258,6 +258,15 @@ SwitchDB::get_switches_by_frame_id( const size_t frame_id ) const
   return index.equal_range( frame_id );
 }
 
+pair<SwitchDBCollectionHashedByFromTrackIdAndFrameIndex::const_iterator, SwitchDBCollectionHashedByFromTrackIdAndFrameIndex::const_iterator>
+SwitchDB::get_switches_by_from_track_id_and_frame_index( const size_t from_track_id, const size_t from_frame_index ) const
+{
+  const SwitchDBCollectionHashedByFromTrackIdAndFrameIndex & index =
+    collection_.get<SwitchDBHashedByFromTrackIdAndFrameIndexTag>();
+
+  return index.equal_range( boost::make_tuple( from_track_id, from_frame_index, 0 ) );
+}
+
 SwitchDBIterator &
 SwitchDBIterator::operator++()
 {

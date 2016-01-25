@@ -329,7 +329,7 @@ Status AlfalfaVideoServiceImpl::get_all_switches_in_window( ServerContext *,
                             frames.second.switch_frame_index() );
     while ( frames.first != frames.second ) {
       switch_info.frames.push_back( *frames.first );
-      frames.first--;
+      frames.first++;
     }
     sw.switches.push_back( switch_info );
   }

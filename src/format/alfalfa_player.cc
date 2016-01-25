@@ -774,10 +774,10 @@ AlfalfaPlayer::get_sequential_play_options( const size_t throughput_estimate )
   }
 
   for ( size_t to_track_id : video_.get_connected_track_ids( current_track_id ) ) {
-    vector<FrameSequence> frame_seqs = get_frame_seqs_with_switch( current_track_id,
+    vector<FrameSequence> switch_frame_seqs = get_frame_seqs_with_switch( current_track_id,
                                                                    dri,
                                                                    to_track_id );
-    for ( FrameSequence frame_seq : frame_seqs ) {
+    for ( FrameSequence frame_seq : switch_frame_seqs ) {
       // Take the earliest switch that is feasible
       if ( determine_feasibility( frame_seq.frame_seq, throughput_estimate ) ) {
         frame_seqs.push_back( frame_seq );
