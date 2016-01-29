@@ -45,6 +45,7 @@ int main( const int argc, char const *argv[] )
 
   int last_minute = 0;
   bool first_fetch = true;
+  bool seeking = false;
 
   while ( true ) {
     /* do a seek? */
@@ -60,6 +61,7 @@ int main( const int argc, char const *argv[] )
       /* force recalculation */
       analysis_generation = 0;
       last_feasibility_analysis = program_startup;
+      seeking = true;
     }
 
     /* kick off a feasibility analysis? */
@@ -73,7 +75,7 @@ int main( const int argc, char const *argv[] )
     /* is a new analysis available? */
     const unsigned int new_analysis_generation = video_map.analysis_generation();
     if ( new_analysis_generation != analysis_generation ) {
-      current_future_of_track = video_map.best_plan( last_frame_decoded, playing );
+      current_future_of_track = video_map.best_plan( last_frame_decoded, playing, seeking );
       fetcher.set_frame_plan( current_future_of_track );
 
       if ( first_fetch ) {
@@ -119,6 +121,7 @@ int main( const int argc, char const *argv[] )
     /* pop the frame from the plan and apply it */
     last_frame_decoded = current_future_of_track.front(); 
     current_future_of_track.pop_front();
+    seeking = false;
     const string coded_frame = fetcher.coded_frame( last_frame_decoded );
 
     const Optional<RasterHandle> raster = decoder.parse_and_decode_frame( coded_frame );

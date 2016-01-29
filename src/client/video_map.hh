@@ -89,7 +89,8 @@ public:
   unsigned int track_length_full( const unsigned int track_id ) const;
   unsigned int track_length_now( const unsigned int track_id ) const;
   std::deque<AnnotatedFrameInfo> best_plan( const AnnotatedFrameInfo & last_frame,
-					    const bool playing ) const;
+					    const bool playing,
+					    bool seeking ) const;
 
   void fetch_switch( const unsigned int track_id,
 		     const unsigned int frame_id,

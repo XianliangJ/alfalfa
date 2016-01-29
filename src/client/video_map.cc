@@ -142,7 +142,8 @@ Optional<AnnotatedFrameInfo> VideoMap::successor( const AnnotatedFrameInfo & fi 
 }
 
 deque<AnnotatedFrameInfo> VideoMap::best_plan( const AnnotatedFrameInfo & last_frame,
-					       const bool playing ) const
+					       const bool playing,
+					       bool seeking ) const
 {
   deque<AnnotatedFrameInfo> ret;
   unique_lock<mutex> lock { mutex_ };
@@ -158,21 +159,45 @@ deque<AnnotatedFrameInfo> VideoMap::best_plan( const AnnotatedFrameInfo & last_f
   while ( true ) {
     vector<AnnotatedFrameInfo> eligible_next_frames;
 
-    /* set up for initialization from scratch */
-    unsigned int timestamp = 0;
+    if ( seeking ) {
+      const unsigned int intended_timestamp = last_frame.track_index;
+      for ( int i = 0; eligible_next_frames.size() <= 4; i++ ) {
+	auto range = keyframe_switches_.equal_range( intended_timestamp + i );
+	for ( auto sw = range.first; sw != range.second; sw++ ) {
+	  if ( sw->second.first > 5 ) {
+	    continue;
+	  }
+	  eligible_next_frames.push_back( tracks_.at( sw->second.first ).at( sw->second.second ) );
+	}
 
-    /* add the "normal" path option */
-    auto normal_next_frame = successor( previous_frame() );
-    if ( normal_next_frame.initialized() ) {
-      /* the decoder is in a particular state already */
-      timestamp = normal_next_frame.get().timestamp;
-      eligible_next_frames.push_back( normal_next_frame.get() );
-    }
+	range = keyframe_switches_.equal_range( intended_timestamp - i );
+	for ( auto sw = range.first; sw != range.second; sw++ ) {
+	  if ( sw->second.first > 5 ) {
+	    continue;
+	  }
+	  eligible_next_frames.push_back( tracks_.at( sw->second.first ).at( sw->second.second ) );
+	}
+      }
+      seeking = false;
+    } else {
+      int timestamp = 0;
 
-    /* are there available keyframe options in other tracks? */
-    auto range = keyframe_switches_.equal_range( timestamp );
-    for ( auto sw = range.first; sw != range.second; sw++ ) {
-      eligible_next_frames.push_back( tracks_.at( sw->second.first ).at( sw->second.second ) );
+      /* add the "normal" path option */
+      auto normal_next_frame = successor( previous_frame() );
+      if ( normal_next_frame.initialized() ) {
+	/* the decoder is in a particular state already */
+	timestamp = normal_next_frame.get().timestamp;
+	eligible_next_frames.push_back( normal_next_frame.get() );
+      }
+
+      /* are there available keyframe options in other tracks? */
+      auto range = keyframe_switches_.equal_range( timestamp );
+      for ( auto sw = range.first; sw != range.second; sw++ ) {
+	if ( sw->second.first > 5 ) {
+	  continue;
+	}
+	eligible_next_frames.push_back( tracks_.at( sw->second.first ).at( sw->second.second ) );
+      }
     }
 
     /* find best option */
