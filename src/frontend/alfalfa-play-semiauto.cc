@@ -30,10 +30,11 @@ int main( const int argc, char const *argv[] )
   
   VideoMap video_map { argv[ 1 ], rasters_to_display };
 
+  auto program_startup = steady_clock::now();
+
   /* start playing */
   auto next_raster_time = steady_clock::now();
   bool playing = false;
-  unsigned int rasters_displayed = 0;
   auto last_feasibility_analysis = steady_clock::now();
   unsigned int analysis_generation = video_map.analysis_generation();
 
@@ -41,12 +42,30 @@ int main( const int argc, char const *argv[] )
   AnnotatedFrameInfo last_frame_decoded = VideoMap::no_frame();
 
   const auto frame_interval = microseconds( lrint( 1000000.0 / 24.0 ) );
-  
-  while ( rasters_displayed < rasters_to_display ) {
+
+  int last_minute = 0;
+  bool first_fetch = true;
+
+  while ( true ) {
+    /* do a seek? */
+    auto current_time = steady_clock::now();
+    duration<double> age_of_program = current_time - program_startup;
+    int this_minute = int( age_of_program.count() / 60 );
+    if ( this_minute != last_minute ) {
+      unsigned int raster_target = 24 * 60 * (this_minute * 2);
+      cout << "Seeking to minute " << this_minute * 2 << "\n";
+      last_frame_decoded.track_id = 6;
+      last_frame_decoded.track_index = raster_target;
+      last_minute = this_minute;
+      /* force recalculation */
+      analysis_generation = 0;
+      last_feasibility_analysis = program_startup;
+    }
+
     /* kick off a feasibility analysis? */
     const auto now = steady_clock::now();
     if ( now - last_feasibility_analysis > milliseconds( 500 ) ) {
-      video_map.update_annotations( fetcher.estimated_bytes_per_second() * 0.75,
+      video_map.update_annotations( fetcher.estimated_bytes_per_second() * 0.7,
 				    fetcher.frame_db_snapshot() );
       last_feasibility_analysis = now;
     }
@@ -56,18 +75,19 @@ int main( const int argc, char const *argv[] )
     if ( new_analysis_generation != analysis_generation ) {
       current_future_of_track = video_map.best_plan( last_frame_decoded, playing );
       fetcher.set_frame_plan( current_future_of_track );
+
+      if ( first_fetch ) {
+	auto current_time = steady_clock::now();
+	duration<double> age_of_program = current_time - program_startup;
+	cout << "first chunk request logged on server at " << age_of_program.count() << "\n";
+	first_fetch = false;
+      }
+
       analysis_generation = new_analysis_generation;
       //      video_map.report_feasibility();
       //      cerr << "kilobits per second: " << fetcher.estimated_bytes_per_second() * 8 * 0.8 / 1000.0 << "\n";
     }
 
-    /* should we fetch a switch? */
-    if ( not playing ) {
-      video_map.fetch_switch( last_frame_decoded.track_id,
-			      last_frame_decoded.track_index,
-			      5 ); /* XXX */
-    }
-    
     /* are we out of available track? */
     if ( current_future_of_track.empty() ) {
       cerr << "Stalling [out of track]\n";
@@ -106,15 +126,10 @@ int main( const int argc, char const *argv[] )
       this_thread::sleep_until( next_raster_time );
       display.draw( raster.get() );
       next_raster_time += frame_interval;
-      rasters_displayed++;
-    }
 
-    if ( rasters_displayed == 10 * 24 ) {
-      cerr << "Seeking!\n\n\n";
-      rasters_displayed = 60 * 24 * 3;
-      last_frame_decoded.track_id = 6;
-      last_frame_decoded.track_index = rasters_displayed;
-      current_future_of_track.clear();
+      auto display_time = steady_clock::now();
+      duration<double> age_of_program = display_time - program_startup;
+      cout << "Time in video " << double( last_frame_decoded.timestamp ) / 24.0 << " which is frame " << last_frame_decoded.timestamp << " displayed at system time " << age_of_program.count() << " with vertical resolution 0  and ssim score " << last_frame_decoded.quality << "\n";
     }
   }
 

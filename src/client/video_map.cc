@@ -147,7 +147,7 @@ deque<AnnotatedFrameInfo> VideoMap::best_plan( const AnnotatedFrameInfo & last_f
   deque<AnnotatedFrameInfo> ret;
   unique_lock<mutex> lock { mutex_ };
 
-  double time_margin_available = playing ? 0 : 1;
+  double time_margin_available = playing ? 0 : 3;
 
   //  cerr << "best_plan( " << track_id << ", " << track_index << " )\n";
 
