@@ -187,6 +187,7 @@ public:
 
   unsigned int width( void ) const { return storage_->width(); }
   unsigned int height( void ) const { return storage_->height(); }
+  unsigned int stride( void ) const { return storage_->width(); }
 
   template <class lambda>
   void forall( const lambda & f ) { storage_->forall( f ); }

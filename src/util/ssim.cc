@@ -33,18 +33,21 @@ x264_pixel_function_t init_pixel_function( void )
 
 x264_pixel_function_t x264_funcs = init_pixel_function();
 
-double ssim( const TwoD<uint8_t> & image, const TwoD<uint8_t> & other_image )
+template<class TwoDType>
+double ssim( const TwoDType & image, const TwoDType & other_image )
 {
-   int count;
    std::vector<uint8_t> tmp_buffer;
+   int count;
    // Buffer size calculation taken from x264
    tmp_buffer.resize( 8 * ( image.width() / 4 + 3 ) * sizeof( int ) );
 
    // No padding so stride = width
-   double ssim = x264_pixel_ssim_wxh( &x264_funcs, &image.at( 0, 0 ), image.width(),
-                                      &other_image.at( 0, 0 ), other_image.width(),
+   double ssim = x264_pixel_ssim_wxh( &x264_funcs, &image.at( 0, 0 ), image.stride(),
+                                      &other_image.at( 0, 0 ), other_image.stride(),
                                       image.width(), image.height(),
                                       tmp_buffer.data(), &count );
 
    return ssim / count;
 }
+
+template double ssim( const TwoD<uint8_t> & image, const TwoD<uint8_t> & other_image );
