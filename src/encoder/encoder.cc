@@ -2,6 +2,7 @@
 
 #include "encoder.hh"
 #include "frame_header.hh"
+#include "ssim.hh"
 
 using namespace std;
 
@@ -59,22 +60,28 @@ uint32_t Encoder::variance( const VP8Raster::Block<size> & block,
 }
 
 template <class MacroblockType>
-void Encoder::luma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
-                                     VP8Raster::Macroblock & reconstructed_mb,
-                                     MacroblockType & frame_mb,
-                                     const Quantizer & quantizer ) const
+size_t Encoder::luma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
+                                       VP8Raster::Macroblock & reconstructed_mb,
+                                       MacroblockType & frame_mb,
+                                       const vector<Quantizer> & quantizers,
+                                       size_t quantizer_index,
+                                       double minimum_ssim ) const
 {
   // Select the best prediction mode
+  const Quantizer & quantizer = quantizers.at( quantizer_index );
+
+  frame_mb.mutable_segment_id_update().clear();
+  frame_mb.mutable_segment_id_update().initialize( quantizer_index );
+
   uint32_t min_energy = numeric_limits<uint32_t>::max();
   mbmode min_prediction_mode = DC_PRED;
   TwoD<uint8_t> min_prediction( 16, 16 );
 
   for ( unsigned int prediction_mode = 0; prediction_mode < num_y_modes; prediction_mode++ ) {
     TwoD<uint8_t> prediction( 16, 16 );
-    uint32_t variance_val = numeric_limits<uint32_t>::max();
+    uint32_t variance_val;
 
     if ( prediction_mode == B_PRED ) {
-      prediction.fill( 0 );
       variance_val = 0;
 
       reconstructed_mb.Y_sub.forall_ij(
@@ -143,6 +150,16 @@ void Encoder::luma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
   else {
     frame_mb.Y2().set_coded( false );
   }
+
+  double current_ssim = ssim( original_mb.Y.contents(), reconstructed_mb.Y.contents() );
+
+  if ( current_ssim < minimum_ssim ) {
+    if ( quantizer_index + 1 < quantizers.size() ) {
+      return luma_mb_intra_predict( original_mb, reconstructed_mb, frame_mb, quantizers, quantizer_index + 1, minimum_ssim );
+    }
+  }
+
+  return quantizer_index;
 }
 
 template <class MacroblockType>
@@ -200,9 +217,9 @@ void Encoder::chroma_mb_intra_predict( const VP8Raster::Macroblock & original_mb
 }
 
 pair<bmode, TwoD<uint8_t>> Encoder::luma_sb_intra_predict( const VP8Raster::Block4 & original_sb,
-                                                               VP8Raster::Block4 & reconstructed_sb,
-                                                               YBlock & /* frame_sb */,
-                                                               const Quantizer & quantizer ) const
+                                                           VP8Raster::Block4 & reconstructed_sb,
+                                                           YBlock & /* frame_sb */,
+                                                           const Quantizer & quantizer ) const
 {
   uint32_t min_energy = numeric_limits<uint32_t>::max();
   bmode min_prediction_mode = B_DC_PRED;
@@ -225,44 +242,67 @@ pair<bmode, TwoD<uint8_t>> Encoder::luma_sb_intra_predict( const VP8Raster::Bloc
 }
 
 template<>
-pair<KeyFrame, double> Encoder::encode_with_quantizer<KeyFrame>( const VP8Raster & raster, const QuantIndices & quant_indices,
-                                                                 const DecoderState & decoder_state ) const
+pair<KeyFrame, double> Encoder::encode_with_quantizer<KeyFrame>( const VP8Raster & raster,
+                                                                 const vector<QuantIndices> & quant_indices,
+                                                                 const DecoderState & decoder_state,
+                                                                 const double minimum_ssim ) const
 {
   const uint16_t width = raster.display_width();
   const uint16_t height = raster.display_height();
 
   KeyFrame frame = Encoder::make_empty_frame( width, height );
-  frame.mutable_header().quant_indices = quant_indices;
+  frame.mutable_header().quant_indices = quant_indices[ 0 ];
 
-  Quantizer quantizer( frame.header().quant_indices );
+  vector<Quantizer> quantizers;
+
+  for ( auto const & q : quant_indices ) {
+    quantizers.emplace_back( q );
+  }
+
   MutableRasterHandle reconstructed_raster_handle { width, height };
   VP8Raster & reconstructed_raster = reconstructed_raster_handle.get();
 
   raster.macroblocks().forall_ij(
     [&] ( VP8Raster::Macroblock & original_mb, unsigned int mb_column, unsigned int mb_row )
     {
-      auto & rereconstructed_mb = reconstructed_raster.macroblock( mb_column, mb_row );
+      auto & reconstructued_mb = reconstructed_raster.macroblock( mb_column, mb_row );
       auto & frame_mb = frame.mutable_macroblocks().at( mb_column, mb_row );
 
-      // Process Y and Y2
-      luma_mb_intra_predict( original_mb, rereconstructed_mb, frame_mb, quantizer );
-      chroma_mb_intra_predict( original_mb, rereconstructed_mb, frame_mb, quantizer );
+      size_t segment_id = luma_mb_intra_predict( original_mb, reconstructued_mb, frame_mb, quantizers, 0, minimum_ssim );
+      chroma_mb_intra_predict( original_mb, reconstructued_mb, frame_mb, quantizers[ segment_id ] );
 
       frame.relink_y2_blocks();
       frame_mb.calculate_has_nonzero();
-      frame_mb.reconstruct_intra( quantizer, rereconstructed_mb );
+      frame_mb.reconstruct_intra( quantizers[ segment_id ], reconstructued_mb );
     } );
 
-    frame.loopfilter( decoder_state.segmentation, decoder_state.filter_adjustments, reconstructed_raster );
-    return make_pair( move( frame ), reconstructed_raster.quality( raster ) );
-}
+  /* fixing segmentation headers in frame */
+  frame.mutable_header().update_segmentation.clear();
+  frame.mutable_header().update_segmentation.initialize();
+  frame.mutable_header().update_segmentation.get().update_mb_segmentation_map = true;
+  frame.mutable_header().update_segmentation.get().segment_feature_data.initialize();
 
+  Array<Flagged<Unsigned<8>>, 3> mb_segmentation_map;
+
+  /* don't optimize the tree probabilities for now */
+  for ( unsigned int i = 0; i < 3; i++ ) {
+    mb_segmentation_map.at( i ).initialize( 128 );
+  }
+
+  frame.mutable_header().update_segmentation.get().mb_segmentation_map.initialize( mb_segmentation_map );
+
+  for ( size_t i = 0; i < 4; i++ ) {
+    auto & quantizer_update = frame.mutable_header().update_segmentation.get().segment_feature_data.get().quantizer_update.at( i );
+    quantizer_update.initialize( quant_indices[ i ].y_ac_qi - quant_indices[ 0 ].y_ac_qi );
+  }
+
+  frame.relink_y2_blocks();
+  frame.loopfilter( decoder_state.segmentation, decoder_state.filter_adjustments, reconstructed_raster );
+  return make_pair( move( frame ), reconstructed_raster.quality( raster ) );
+}
 
 double Encoder::encode_as_keyframe( const VP8Raster & raster, const double minimum_ssim )
 {
-  int y_ac_qi_min = 0;
-  int y_ac_qi_max = 127;
-
   const uint16_t width = raster.display_width();
   const uint16_t height = raster.display_height();
 
@@ -271,30 +311,25 @@ double Encoder::encode_as_keyframe( const VP8Raster & raster, const double minim
   }
 
   DecoderState temp_state { width, height };
-  QuantIndices quant_indices;
-  quant_indices.y_dc  = Signed<4>( 0 );
-  quant_indices.uv_dc = Signed<4>( 15 );
-  quant_indices.uv_ac = Signed<4>( 15 );
+  vector<QuantIndices> quant_indices;
+  quant_indices.resize( 4 );
+
+  for ( size_t i = 0; i < 4; i++ ) {
+    switch( i ) {
+    case 0: quant_indices[ i ].y_ac_qi = 96; break;
+    case 1: quant_indices[ i ].y_ac_qi = 3; break;
+    case 2: quant_indices[ i ].y_ac_qi = 2;  break;
+    case 3: quant_indices[ i ].y_ac_qi = 0;  break;
+    }
+
+    quant_indices[ i ].y_dc  = Signed<4>( 0 );
+    quant_indices[ i ].uv_dc = Signed<4>( 15 );
+    quant_indices[ i ].uv_ac = Signed<4>( 15 );
+  }
 
   pair<KeyFrame, double> encoded_frame = make_pair( move( make_empty_frame( width, height ) ), 0 );
 
-  while ( y_ac_qi_min <= y_ac_qi_max ) {
-    quant_indices.y_ac_qi = ( y_ac_qi_min + y_ac_qi_max ) / 2;
-    encoded_frame = encode_with_quantizer<KeyFrame>( raster, quant_indices, temp_state );
-
-    if ( abs( encoded_frame.second - minimum_ssim ) < 0.005
-         or y_ac_qi_min == y_ac_qi_max) {
-      break; // "I believe the search is over."
-    }
-
-    if ( encoded_frame.second < minimum_ssim ) {
-      y_ac_qi_max = ( y_ac_qi_min + y_ac_qi_max ) / 2 - 1;
-    }
-    else {
-      y_ac_qi_min = ( y_ac_qi_min + y_ac_qi_max ) / 2 + 1;
-    }
-  }
-
+  encoded_frame = encode_with_quantizer<KeyFrame>( raster, quant_indices, temp_state, minimum_ssim );
   ivf_writer_.append_frame( encoded_frame.first.serialize( temp_state.probability_tables ) );
 
   return encoded_frame.second;

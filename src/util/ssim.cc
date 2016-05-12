@@ -51,3 +51,4 @@ double ssim( const TwoDType & image, const TwoDType & other_image )
 }
 
 template double ssim( const TwoD<uint8_t> & image, const TwoD<uint8_t> & other_image );
+template double ssim( const TwoDSubRange<uint8_t, 16, 16> & image, const TwoDSubRange<uint8_t, 16, 16> & other_image );

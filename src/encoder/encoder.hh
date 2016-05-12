@@ -27,10 +27,11 @@ private:
                             const uint16_t dc_factor, const uint16_t ac_factor );
 
   template <class MacroblockType>
-  void luma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
-                              VP8Raster::Macroblock & constructed_mb,
-                              MacroblockType & frame_mb,
-                              const Quantizer & quantizer ) const;
+  size_t luma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
+                                VP8Raster::Macroblock & constructed_mb,
+                                MacroblockType & frame_mb,
+                                const std::vector<Quantizer> & quantizer,
+                                size_t quantizer_index, double minimum_ssim ) const;
 
   template <class MacroblockType>
   void chroma_mb_intra_predict( const VP8Raster::Macroblock & original_mb,
@@ -44,8 +45,10 @@ private:
                                                          const Quantizer & quantizer ) const;
 
   template<class FrameType>
-  std::pair<KeyFrame, double> encode_with_quantizer( const VP8Raster & raster, const QuantIndices & quant_indices,
-                                                     const DecoderState & decoder_state ) const;
+  std::pair<KeyFrame, double> encode_with_quantizer( const VP8Raster & raster,
+                                                     const std::vector<QuantIndices> & quant_indices,
+                                                     const DecoderState & decoder_state,
+                                                     const double minimum_ssim ) const;
 
 public:
   Encoder( const std::string & output_filename, const uint16_t width, const uint16_t height );
